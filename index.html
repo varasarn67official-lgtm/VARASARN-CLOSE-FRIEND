@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Varasarn Close Friends</title>
-    <!-- Google Identity Services Script สำหรับระบบ Google Login -->
+    <!-- Google Identity Services Script -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -214,9 +214,36 @@
         .color-4 { background: #fef3c7; border-left: 5px solid #d97706; color: #78350f; }
         .color-5 { background: #dbeafe; border-left: 5px solid #2563eb; color: #1e3a8a; }
         .color-6 { background: #f3e8ff; border-left: 5px solid #9333ea; color: #581c87; }
+        
+        /* สไตล์หน้าจอ Login สำหรับผู้ใช้ใหม่ */
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, var(--purple-900) 0%, var(--purple-700) 100%);
+            z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+        .login-card {
+            background: var(--white); border-radius: var(--radius-lg); padding: 40px 30px;
+            width: 100%; max-width: 420px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
+
+    <!-- หน้าจอ Login เต็มจอ จะแสดงก็ต่อเมื่อยังไม่ได้เข้าสู่ระบบ -->
+    <div id="loginOverlay" style="display: none;">
+        <div class="login-card">
+            <h3 class="text-purple fw-bold mb-2"><i class="bi bi-journal-text me-2"></i>Varasarn Close Friends</h3>
+            <p class="text-muted mb-4" style="font-size: 0.95rem;">เว็บไซต์รวบรวมรีวิววิชาเรียนและจัดตารางเรียน คณะวารสารศาสตร์ฯ มธ.</p>
+            
+            <div class="p-3 mb-4 rounded-3" style="background-color: var(--purple-50); border: 1px dashed var(--purple-300);">
+                <small class="text-muted">กรุณ้าเข้าสู่ระบบด้วยบัญชี Google เพื่อใช้งานระบบรีวิวและบันทึกตารางเรียน</small>
+            </div>
+
+            <!-- ปุ่ม Google Sign-In มาตรฐาน -->
+            <div id="googleSignInButton" class="d-flex justify-content-center"></div>
+        </div>
+    </div>
+
     <nav class="navbar navbar-custom navbar-dark mb-4">
         <div class="container d-flex justify-content-between align-items-center">
             <span class="navbar-brand mb-0 h1" onclick="showHomeView()"><i class="bi bi-journal-text me-2"></i>Varasarn Close Friends</span>
@@ -436,33 +463,25 @@
             currentUserEmail = localStorage.getItem("varasarn_user_email");
             
             if (!currentUserEmail) {
-                initGoogleLogin();
+                // แสดงหน้าต่าง Login ถ้ายังไม่ได้เข้าสู่ระบบ
+                document.getElementById('loginOverlay').style.display = 'flex';
+                renderGoogleButton();
             } else {
                 setupUserSession();
             }
         };
 
-        // ระบบ Google Sign-In จริง
-        function initGoogleLogin() {
+        // เรนเดอร์ปุ่ม Google Sign-In มาตรฐาน
+        function renderGoogleButton() {
             if (typeof google !== 'undefined') {
                 google.accounts.id.initialize({
                     client_id: GOOGLE_CLIENT_ID,
                     callback: handleCredentialResponse
                 });
-                google.accounts.id.prompt((notification) => {
-                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                        // ถ้าหน้าต่างอัตโนมัติไม่ขึ้น ให้บังคับให้ผู้ใช้กดล็อกอินผ่านหน้าเว็บแทน
-                        showLoginButtonModal();
-                    }
-                });
-            } else {
-                // ถ้าโหลด Script ช้า ให้ใช้ Prompt สำรอง
-                let fallback = prompt("กรุณากรอก Email มหาวิทยาลัยของคุณเพื่อเข้าใช้งาน:");
-                if(fallback && fallback.trim() !== "") {
-                    currentUserEmail = fallback.trim();
-                    localStorage.setItem("varasarn_user_email", currentUserEmail);
-                    setupUserSession();
-                }
+                google.accounts.id.renderButton(
+                    document.getElementById("googleSignInButton"),
+                    { theme: "outline", size: "large", width: "100%", text: "signin_with", locale: "th" }
+                );
             }
         }
 
@@ -470,6 +489,9 @@
             let responsePayload = parseJwt(response.credential);
             currentUserEmail = responsePayload.email;
             localStorage.setItem("varasarn_user_email", currentUserEmail);
+            
+            // ซ่อนหน้า Login แล้วเริ่มโหลดเว็บ
+            document.getElementById('loginOverlay').style.display = 'none';
             setupUserSession();
         }
 
@@ -487,18 +509,6 @@
             document.getElementById('userEmailDisplay').innerHTML = `<i class="bi bi-person-circle me-1"></i>${shortEmail}`;
             document.getElementById('userEmailDisplayMobile').innerHTML = `<i class="bi bi-person-circle me-1"></i>${shortEmail}`;
             loadData();
-        }
-
-        function showLoginButtonModal() {
-            let emailInput = prompt("ยินดีต้อนรับสู่ Varasarn Close Friends\n\nกรุณากรอก Email ของคุณเพื่อเข้าใช้งาน:");
-            if(emailInput && emailInput.trim() !== "") {
-                currentUserEmail = emailInput.trim();
-                localStorage.setItem("varasarn_user_email", currentUserEmail);
-                setupUserSession();
-            } else {
-                currentUserEmail = "guest@domain.com";
-                setupUserSession();
-            }
         }
 
         // ====== ฟังก์ชันการเปลี่ยนหน้าเว็บ ======
