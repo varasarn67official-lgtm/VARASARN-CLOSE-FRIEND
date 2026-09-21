@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Varasarn Close Friends</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --purple-900: #2A1B47;
+            --purple-700: #6f42c1;
+            --purple-600: #7c4fda;
+            --purple-300: #c9b3f0;
+            --purple-100: #f2ecfb;
+            --purple-50: #fbf9ff;
+            --amber-500: #f5a623;
+            --ink-600: #5b5468;
+            --line: #e7e1f5;
+            --white: #ffffff;
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-pill: 999px;
+            --shadow-card: 0 2px 10px rgba(111, 66, 193, 0.06);
+            --shadow-card-hover: 0 16px 32px rgba(111, 66, 193, 0.18);
+            --shadow-float: 0 10px 24px rgba(111, 66, 193, 0.30);
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: var(--purple-50);
+            color: var(--purple-900);
+            font-weight: 300;
+        }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Kanit', sans-serif; }
+        .navbar-custom {
+            background: linear-gradient(135deg, var(--purple-700) 0%, var(--purple-600) 100%);
+            padding: 18px 0;
+        }
+        .navbar-brand {
+            color: var(--white) !important;
+            font-family: 'Kanit', sans-serif;
+            font-weight: 600 !important;
+            font-size: 1.35rem;
+            cursor: pointer;
+        }
+        .user-dropdown-btn {
+            background-color: rgba(255,255,255,0.18);
+            padding: 6px 16px;
+            border-radius: var(--radius-pill);
+            color: var(--white);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255,255,255,0.25);
+            font-size: 0.85rem;
+        }
+        .user-dropdown-btn:hover, .user-dropdown-btn:focus {
+            background-color: rgba(255,255,255,0.25);
+            color: var(--white);
+        }
+        .dropdown-menu-custom {
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow-float);
+        }
+        .text-purple { color: var(--purple-700) !important; }
+        .section-label {
+            font-family: 'Kanit', sans-serif;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-label::before {
+            content: "";
+            display: inline-block;
+            width: 10px; height: 10px;
+            border-radius: 50% 50% 50% 0;
+            background: var(--purple-700);
+            transform: rotate(45deg);
+        }
+        .btn-purple {
+            background-color: var(--purple-700);
+            color: var(--white);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            border: none;
+        }
+        .btn-purple:hover {
+            background-color: var(--purple-600);
+            color: var(--white);
+        }
+        .btn-outline-purple {
+            color: var(--purple-700);
+            border: 1.5px solid var(--purple-300);
+            background-color: var(--white);
+            font-weight: 400;
+            border-radius: var(--radius-md);
+        }
+        .btn-outline-purple:hover {
+            background-color: var(--purple-700);
+            border-color: var(--purple-700);
+            color: var(--white);
+        }
+        .search-wrap { position: relative; }
+        .search-wrap .form-control {
+            border: 1.5px solid var(--line);
+            border-radius: var(--radius-pill);
+            padding: 12px 20px 12px 46px;
+        }
+        .search-wrap .form-control:focus {
+            border-color: var(--purple-700);
+            box-shadow: 0 0 0 4px var(--purple-100);
+        }
+        .search-wrap .search-icon {
+            position: absolute;
+            left: 18px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--purple-600);
+            font-size: 1.1rem;
+        }
+        .category-menu {
+            display: flex; overflow-x: auto; white-space: nowrap;
+            padding-bottom: 12px; margin-bottom: 6px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .category-menu::-webkit-scrollbar { height: 5px; }
+        .category-menu::-webkit-scrollbar-thumb {
+            background-color: var(--purple-300);
+            border-radius: var(--radius-pill);
+        }
+        .category-btn {
+            margin-right: 8px; border-radius: var(--radius-pill) !important;
+            padding: 7px 18px; font-size: 0.9rem; transition: all 0.2s;
+        }
+        .course-card {
+            cursor: pointer; transition: all 0.2s;
+            border: 1px solid var(--line); border-radius: var(--radius-lg);
+            background-color: var(--white); box-shadow: var(--shadow-card);
+            position: relative; overflow: hidden; height: 100%;
+        }
+        .course-card::before {
+            content: ""; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+            background: linear-gradient(90deg, var(--purple-700), var(--purple-600));
+        }
+        .course-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-card-hover); }
+        .course-card .badge {
+            background-color: var(--purple-100) !important;
+            color: var(--purple-700) !important; font-weight: 500;
+        }
+        .course-card .card-title { font-family: 'Kanit', sans-serif; font-weight: 600; margin-top: 12px; }
+        .course-card .card-text {
+            color: var(--ink-600); font-size: 0.92rem; display: -webkit-box;
+            -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .review-box {
+            background: var(--white); border-radius: var(--radius-md);
+            padding: 18px; margin-bottom: 12px; border: 1px solid var(--line);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02); word-wrap: break-word;
+        }
+        .star-rating { color: var(--amber-500); font-weight: 500; letter-spacing: 2px; }
+        .modal-content { border-radius: var(--radius-lg); border: none; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .modal-header.navbar-custom { padding: 20px 24px; }
+        .modal-header.bg-light { background-color: var(--purple-50) !important; padding: 20px 24px; }
+        .form-control, .form-select { border-radius: var(--radius-md); border: 1.5px solid var(--line); padding: 10px 14px; }
+        .floating-contact-btn {
+            position: fixed; bottom: 22px; right: 22px; z-index: 1050;
+            border-radius: var(--radius-pill); padding: 14px 24px; box-shadow: var(--shadow-float); font-weight: 500;
+        }
+        .sec-info-box {
+            background-color: var(--purple-50); border: 1px dashed var(--purple-300);
+            border-radius: 8px; padding: 10px; font-size: 0.9rem;
+        }
+        /* Grid Timetable CSS */
+        .timetable-container {
+            overflow-x: auto; background: var(--white); border: 1px solid var(--line);
+            border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-card);
+        }
+        .timetable-grid { min-width: 900px; position: relative; }
+        .time-header-row {
+            display: flex; margin-left: 60px; border-bottom: 1px solid var(--line);
+            background: var(--purple-50); border-radius: 8px 8px 0 0;
+        }
+        .time-header-slot {
+            flex: 1; text-align: left; font-size: 0.8rem; font-weight: 500;
+            color: var(--purple-900); padding: 12px 6px; border-right: 1px dashed var(--line);
+        }
+        .day-row { display: flex; border-bottom: 1px solid var(--line); height: 85px; }
+        .day-row:last-child { border-bottom: none; }
+        .day-label {
+            width: 60px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem; font-weight: 600; border-right: 1px solid var(--line);
+            background: var(--purple-50); color: var(--purple-900);
+        }
+        .day-track {
+            flex-grow: 1; position: relative;
+            background-image: linear-gradient(to right, var(--line) 1px, transparent 1px);
+            background-size: calc(100% / 12) 100%;
+        }
+        .course-block {
+            position: absolute; top: 10px; bottom: 10px; border-radius: 10px; padding: 8px 10px;
+            overflow: hidden; display: flex; flex-direction: column; justify-content: center;
+            line-height: 1.3; cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,0.08);
+            transition: transform 0.2s, z-index 0.2s, box-shadow 0.2s; z-index: 5; border: 1px solid rgba(0,0,0,0.05);
+        }
+        .course-block:hover { transform: scale(1.02); z-index: 10; box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+        .course-block .c-title { font-family: 'Kanit', sans-serif; font-weight: 600; font-size: 0.9rem; margin-bottom: 3px; }
+        .course-block .c-detail { font-size: 0.75rem; opacity: 0.9; }
+        .color-1 { background: #e0e7ff; border-left: 5px solid #4f46e5; color: #312e81; }
+        .color-2 { background: #fce7f3; border-left: 5px solid #db2777; color: #831843; }
+        .color-3 { background: #d1fae5; border-left: 5px solid #059669; color: #064e3b; }
+        .color-4 { background: #fef3c7; border-left: 5px solid #d97706; color: #78350f; }
+        .color-5 { background: #dbeafe; border-left: 5px solid #2563eb; color: #1e3a8a; }
+        .color-6 { background: #f3e8ff; border-left: 5px solid #9333ea; color: #581c87; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-custom navbar-dark mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <span class="navbar-brand mb-0 h1" onclick="showHomeView()"><i class="bi bi-journal-text me-2"></i>Varasarn Close Friends</span>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-light text-purple fw-bold rounded-pill px-3 shadow-sm" onclick="showTimetableView()">
+                    <i class="bi bi-grid-3x3-gap-fill me-1"></i>ตารางเรียน
+                </button>
+                <div class="dropdown d-none d-md-block">
+                    <button class="btn user-dropdown-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span id="userEmailDisplay"><i class="bi bi-person-circle me-1"></i>กำลังโหลด...</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom py-2 mt-2">
+                        <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="showMyReviewsView()"><i class="bi bi-star-fill text-warning me-2"></i>รีวิวของฉัน</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item py-2 text-danger fw-bold" href="javascript:void(0)" onclick="handleLogout()"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div id="homeView" class="container pb-5">
+        <div class="d-md-none mb-3 text-end dropdown">
+            <button class="btn user-dropdown-btn dropdown-toggle w-100 text-start d-flex justify-content-between align-items-center" style="background-color: var(--purple-100); border-color: var(--purple-300); color: var(--purple-900);" type="button" data-bs-toggle="dropdown">
+                <span id="userEmailDisplayMobile"><i class="bi bi-person-circle me-1"></i>กำลังโหลด...</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-custom w-100 py-2 mt-2">
+                <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="showMyReviewsView()"><i class="bi bi-star-fill text-warning me-2"></i>รีวิวของฉัน</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item py-2 text-danger fw-bold" href="javascript:void(0)" onclick="handleLogout()"><i class="bi bi-box-arrow-right me-2"></i>ออกจากระบบ</a></li>
+            </ul>
+        </div>
+
+        <div class="mb-4 mt-2 hero-banner"><img src="https://i.postimg.cc/FFk3NRHV/IMG-0677.jpg" class="img-fluid w-100" alt="Banner แนะนำรายวิชา" style="border-radius: var(--radius-lg);"></div>
+        
+        <!-- กล่องข้อความแจ้งจุดประสงค์เว็บ -->
+        <div class="alert shadow-sm mb-4" style="background-color: var(--white); border: 1.5px solid var(--line); border-radius: var(--radius-lg);">
+            <div class="text-center p-2 p-md-3">
+                <h5 class="text-purple fw-bold mb-3"><i class="bi bi-info-circle-fill me-2"></i>เกี่ยวกับ Varasarn Close Friends</h5>
+                <p class="mb-3" style="color: var(--ink-600); font-size: 0.95rem; line-height: 1.6;">
+                    เว็บไซต์รวบรวมรีวิววิชาเรียนของคณะวารสารศาสตร์และสื่อสารมวลชน<br class="d-none d-md-block">
+                    ทั้งหลักสูตรภาคปกติ (JC) และหลักสูตรนานาชาติ (BJM) เป็นพื้นที่รวบรวมความคิดเห็นจากนักศึกษา<br>
+                    <span class="fw-bold" style="background-color: var(--purple-100); color: var(--purple-700); padding: 2px 10px; border-radius: 6px;">ดูแลโดยคณะกรรมการนักศึกษา (กน.วส.)</span>
+                </p>
+                <div class="d-inline-block px-4 py-2 mt-2" style="background-color: var(--purple-50); border-radius: var(--radius-pill); border: 1px dashed var(--purple-300);">
+                    <small class="text-muted fw-medium"><i class="bi bi-headset me-1"></i>พบปัญหาหรือต้องการสอบถามติดต่อ</small>
+                    <a href="https://www.instagram.com/varasarn.official" target="_blank" class="text-decoration-none fw-bold ms-2" style="background: -webkit-linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        <i class="bi bi-instagram me-1" style="color: #dc2743; -webkit-text-fill-color: initial;"></i>IG : varasarn.official
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+            <h4 class="mb-0 section-label">รายวิชาทั้งหมด</h4>
+            <button class="btn btn-outline-purple shadow-sm" onclick="openCourseModal()"><i class="bi bi-plus-lg me-1"></i>เพิ่มรายวิชาใหม่</button>
+        </div>
+
+        <div class="mb-3 search-wrap">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="searchInput" class="form-control form-control-lg shadow-sm" placeholder="ค้นหารหัสวิชา หรือ ชื่อวิชา..." onkeyup="filterCourses()">
+        </div>
+
+        <div class="category-menu" id="categoryMenu">
+            <button class="btn btn-purple category-btn" onclick="filterByCategory('ทั้งหมด', this)">ทั้งหมด</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('วิชาศึกษาทั่วไป', this)">วิชาศึกษาทั่วไป</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('วิชาแกนคณะ', this)">วิชาแกนคณะ</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('วิชาบังคับเลือกหมวด', this)">วิชาบังคับเลือกหมวด</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('กลุ่มวิชาวารสารศาสตร์', this)">กลุ่มวิชาวารสารศาสตร์</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('กลุ่มวิชาบริหารการสื่อสาร', this)">กลุ่มวิชาบริหารการสื่อสาร</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('กลุ่มวิชาวิทยุโทรทัศน์และสื่อดิจิทัล', this)">กลุ่มวิชาวิทยุโทรทัศน์ฯ</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('กลุ่มวิชาสื่อสารองค์กร', this)">กลุ่มวิชาสื่อสารองค์กร</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('กลุ่มวิชาโฆษณา', this)">กลุ่มวิชาโฆษณา</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('กลุ่มวิชาภาพยนตร์และภาพถ่าย', this)">กลุ่มวิชาภาพยนตร์ฯ</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('วิชาบังคับนอกคณะ', this)">วิชาบังคับนอกคณะ</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('วิชาโทหรือวิชาเลือก', this)">วิชาโทหรือวิชาเลือก</button>
+            <button class="btn btn-outline-purple category-btn" onclick="filterByCategory('วิชาเลือกเสรี', this)">วิชาเลือกเสรี</button>
+        </div>
+
+        <div id="loading" class="text-center my-5"><div class="spinner-border text-purple" role="status"></div><p class="mt-3 fw-medium text-purple">กำลังโหลดข้อมูล...</p></div>
+        <div class="row" id="courseList"></div>
+    </div>
+
+    <!-- หน้าต่างตารางเรียน -->
+    <div id="timetableView" class="container pb-5" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+            <div>
+                <h3 class="text-purple fw-bold mb-1"><i class="bi bi-grid-3x3-gap-fill me-2"></i>ตารางเรียนส่วนตัว</h3>
+                <p class="text-muted mb-0 d-none d-md-block">My Timetable วางแผนการเรียนของคุณได้ง่ายๆ (คลิกที่วิชาเพื่อลบออก)</p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-danger shadow-sm" onclick="clearSchedule()"><i class="bi bi-trash-fill me-1 d-none d-md-inline"></i>ล้างตาราง</button>
+                <button class="btn btn-purple shadow-sm" onclick="showHomeView()"><i class="bi bi-arrow-left-circle-fill me-1"></i>หน้าหลัก</button>
+            </div>
+        </div>
+        <div id="timetableFullContent"></div>
+    </div>
+
+    <!-- หน้าต่างรีวิวของฉัน -->
+    <div id="myReviewsView" class="container pb-5" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+            <div>
+                <h3 class="text-purple fw-bold mb-1"><i class="bi bi-star-fill text-warning me-2"></i>รีวิวของฉัน</h3>
+                <p class="text-muted mb-0">จัดการรีวิวทั้งหมดที่คุณเคยเขียนไว้ที่นี่</p>
+            </div>
+            <button class="btn btn-purple shadow-sm" onclick="showHomeView()"><i class="bi bi-arrow-left-circle-fill me-1"></i>หน้าหลัก</button>
+        </div>
+        <div class="row" id="myReviewsList"></div>
+    </div>
+
+    <!-- Modal เพิ่มรายวิชา -->
+    <div class="modal fade" id="courseModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light"><h5 class="modal-title text-purple" id="courseModalTitle">เพิ่มรายวิชาใหม่</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body p-4">
+                    <form id="courseForm" onsubmit="handleCourseSubmit(event)">
+                        <input type="hidden" id="courseRowIndex">
+                        <div class="mb-3"><label>รหัสวิชา</label><input type="text" class="form-control" id="newCourseCode" required></div>
+                        <div class="mb-3"><label>ชื่อวิชา</label><input type="text" class="form-control" id="newCourseName" required></div>
+                        <div class="mb-4"><label>หมวดหมู่</label>
+                            <select class="form-select" id="newCourseCategory" required>
+                                <option value="วิชาศึกษาทั่วไป">วิชาศึกษาทั่วไป</option><option value="วิชาแกนคณะ">วิชาแกนคณะ</option><option value="วิชาบังคับเลือกหมวด">วิชาบังคับเลือกหมวด</option><option value="กลุ่มวิชาวารสารศาสตร์">กลุ่มวิชาวารสารศาสตร์</option><option value="กลุ่มวิชาบริหารการสื่อสาร">กลุ่มวิชาบริหารการสื่อสาร</option><option value="กลุ่มวิชาวิทยุโทรทัศน์และสื่อดิจิทัล">กลุ่มวิชาวิทยุโทรทัศน์และสื่อดิจิทัล</option><option value="กลุ่มวิชาสื่อสารองค์กร">กลุ่มวิชาสื่อสารองค์กร</option><option value="กลุ่มวิชาโฆษณา">กลุ่มวิชาโฆษณา</option><option value="กลุ่มวิชาภาพยนตร์และภาพถ่าย">กลุ่มวิชาภาพยนตร์และภาพถ่าย</option><option value="วิชาบังคับนอกคณะ">วิชาบังคับนอกคณะ</option><option value="วิชาโทหรือวิชาเลือก">วิชาโทหรือวิชาเลือก</option><option value="วิชาเลือกเสรี">วิชาเลือกเสรี</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-purple w-100 py-2" id="btnSubmitCourse"><i class="bi bi-save me-1"></i>บันทึก</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal ดูรีวิว -->
+    <div class="modal fade" id="reviewModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header navbar-custom navbar-dark">
+                    <h5 class="modal-title text-white mb-0" id="reviewModalTitle">ชื่อวิชา</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h6 class="section-label mb-0">💬 รีวิวและเวลาเรียน</h6>
+                        <button class="btn btn-purple btn-sm shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#reviewFormCollapse" onclick="prepareNewReview()">
+                            <i class="bi bi-pencil-square me-1"></i>เขียนรีวิว / เพิ่มเซคชั่น
+                        </button>
+                    </div>
+                    <div class="collapse mb-4" id="reviewFormCollapse">
+                        <div class="bg-white p-4 rounded shadow-sm border">
+                            <h6 class="section-label mb-3" id="reviewFormTitle">✍️ เขียนรีวิว & ข้อมูลเวลาเรียน</h6>
+                            <form id="reviewForm" onsubmit="handleReviewSubmit(event)">
+                                <input type="hidden" id="reviewCourseCode"><input type="hidden" id="editReviewRowIndex">
+                                <div class="row mb-3">
+                                    <div class="col-md-6 mb-3 mb-md-0"><label>เทอมที่เรียน</label><select class="form-select" id="reviewSemester" required><option value="">เลือก...</option><option value="1">เทอม 1</option><option value="2">เทอม 2</option><option value="ฤดูร้อน">ฤดูร้อน</option></select></div>
+                                    <div class="col-md-6"><label>ปีการศึกษา</label><select class="form-select" id="reviewYear" required><option value="">เลือก...</option><option value="2569">2569</option><option value="2568">2568</option><option value="2567">2567</option><option value="2566">2566</option><option value="2565">2565</option></select></div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6 mb-3 mb-md-0"><label>อาจารย์ผู้สอน</label><input type="text" class="form-control" id="reviewTeacher" required placeholder="ชื่ออาจารย์"></div>
+                                    <div class="col-md-6"><label>กลุ่มเรียน (เช่น Sec 01)</label><input type="text" class="form-control" id="reviewSec" required placeholder="Sec..."></div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4 mb-3 mb-md-0"><label>วัน</label><select class="form-select" id="reviewDay" required><option value="จันทร์">จันทร์</option><option value="อังคาร">อังคาร</option><option value="พุธ">พุธ</option><option value="พฤหัสบดี">พฤหัสบดี</option><option value="ศุกร์">ศุกร์</option><option value="เสาร์">เสาร์</option><option value="อาทิตย์">อาทิตย์</option></select></div>
+                                    <div class="col-md-4 mb-3 mb-md-0"><label>เวลาเริ่ม (น.)</label><input type="time" class="form-control" id="reviewStart" required></div>
+                                    <div class="col-md-4"><label>เวลาเลิก (น.)</label><input type="time" class="form-control" id="reviewEnd" required></div>
+                                </div>
+                                <div class="mb-3"><label>ให้คะแนน (1-5 ดาว)</label><select class="form-select" id="reviewRating" required><option value="5">5 ดาว</option><option value="4">4 ดาว</option><option value="3">3 ดาว</option><option value="2">2 ดาว</option><option value="1">1 ดาว</option></select></div>
+                                <div class="mb-4"><label>ประสบการณ์ที่เจอ</label><textarea class="form-control" id="reviewText" rows="3" required></textarea></div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-secondary w-50" id="btnCancelEditReview" style="display:none;" onclick="cancelEditReview()">ยกเลิก</button>
+                                    <button type="submit" class="btn btn-purple w-100 py-2" id="btnSubmitReview"><i class="bi bi-save me-1"></i>บันทึกข้อมูล</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-4"><select class="form-select" id="filterRating" onchange="renderReviews()"><option value="">ทุกคะแนน</option><option value="5">5 ดาว</option><option value="4">4 ดาว</option><option value="3">3 ดาว</option><option value="2">2 ดาว</option><option value="1">1 ดาว</option></select></div>
+                        <div class="col-4"><select class="form-select" id="filterSemester" onchange="renderReviews()"><option value="">ทุกเทอม</option><option value="1">เทอม 1</option><option value="2">เทอม 2</option><option value="ฤดูร้อน">ฤดูร้อน</option></select></div>
+                        <div class="col-4"><select class="form-select" id="filterYear" onchange="renderReviews()"><option value="">ทุกปี</option><option value="2569">2569</option><option value="2568">2568</option><option value="2567">2567</option><option value="2566">2566</option><option value="2565">2565</option></select></div>
+                    </div>
+                    <div id="reviewsContainer" class="bg-white p-3 rounded shadow-sm border" style="max-height: 500px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ปุ่มติดต่อมุมขวาล่าง -->
+    <button class="btn btn-purple floating-contact-btn" data-bs-toggle="modal" data-bs-target="#contactModal">
+        <i class="bi bi-chat-heart-fill fs-5"></i> <span class="d-none d-md-inline">แจ้งปัญหา/ติดต่อ</span>
+    </button>
+    <div class="modal fade" id="contactModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-light px-4 py-3"><h5 class="modal-title text-purple"><i class="bi bi-headset me-2"></i>ติดต่อผู้ดูแล</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body text-center p-4">
+                    <a href="https://line.me/R/ti/p/@293shldn" target="_blank" class="btn w-100 mb-3 text-white fw-bold d-flex align-items-center justify-content-center" style="background-color: #00B900; border-radius: 12px; padding: 12px;"><i class="bi bi-line fs-5 me-2"></i>ติดต่อทาง LINE</a>
+                    <a href="https://www.instagram.com/varasarn_official?igsh=MWpxa2V4YWlzaXF3YQ==" target="_blank" class="btn w-100 text-white fw-bold d-flex align-items-center justify-content-center" style="background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); border-radius: 12px; padding: 12px;"><i class="bi bi-instagram fs-5 me-2"></i>ทักแชททาง IG</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ==========================================
+        // API URL ที่คุณได้มา ใส่ไว้ตรงนี้เรียบร้อยแล้วครับ ✅
+        // ==========================================
+        const API_URL = "https://script.google.com/macros/s/AKfycbxbk3B29ZWT4fO0GlJ6uZAKAdH5flxfGrQ6NSDCGJCMtdbITU56KPKGmiqvKvEziM0z/exec"; 
+
+        let globalData = {};
+        let courseModalInstance, reviewModalInstance;
+        let currentCategoryFilter = 'ทั้งหมด';
+        let currentUserEmail = "";
+
+        window.onload = function() {
+            courseModalInstance = new bootstrap.Modal(document.getElementById('courseModal'));
+            reviewModalInstance = new bootstrap.Modal(document.getElementById('reviewModal'));
+            
+            // ระบบ Login ชั่วคราว (เก็บในเครื่อง)
+            currentUserEmail = localStorage.getItem("varasarn_user_email");
+            if (!currentUserEmail) {
+                let inputEmail = prompt("ยินดีต้อนรับสู่ Varasarn Close Friends!\n\nกรุณากรอก Email ของคุณเพื่อเข้าใช้งาน:");
+                if(inputEmail && inputEmail.trim() !== "") {
+                    currentUserEmail = inputEmail.trim();
+                    localStorage.setItem("varasarn_user_email", currentUserEmail);
+                } else {
+                    currentUserEmail = "guest@domain.com"; // ถ้าไม่กรอกให้เป็น Guest ไปก่อน
+                }
+            }
+
+            // แสดงชื่อผู้ใช้
+            let shortEmail = currentUserEmail.split('@')[0];
+            document.getElementById('userEmailDisplay').innerHTML = `<i class="bi bi-person-circle me-1"></i>${shortEmail}`;
+            document.getElementById('userEmailDisplayMobile').innerHTML = `<i class="bi bi-person-circle me-1"></i>${shortEmail}`;
+
+            loadData();
+        };
+
+        // ====== ฟังก์ชันการเปลี่ยนหน้าเว็บ ======
+        function showHomeView() {
+            document.getElementById('timetableView').style.display = 'none';
+            document.getElementById('myReviewsView').style.display = 'none';
+            document.getElementById('homeView').style.display = 'block';
+            window.scrollTo(0,0);
+        }
+
+        function showTimetableView() {
+            document.getElementById('homeView').style.display = 'none';
+            document.getElementById('myReviewsView').style.display = 'none';
+            document.getElementById('timetableView').style.display = 'block';
+            renderTimetablePage();
+            window.scrollTo(0,0);
+        }
+
+        function showMyReviewsView() {
+            document.getElementById('homeView').style.display = 'none';
+            document.getElementById('timetableView').style.display = 'none';
+            document.getElementById('myReviewsView').style.display = 'block';
+            renderMyReviewsPage();
+            window.scrollTo(0,0);
+        }
+
+        function handleLogout() {
+            if(confirm("คุณต้องการออกจากระบบ (ล้างข้อมูล Email ในเครื่องนี้) ใช่หรือไม่?")) {
+                localStorage.removeItem("varasarn_user_email");
+                location.reload(); // รีเฟรชหน้าเว็บเพื่อเข้าสู่ระบบใหม่
+            }
+        }
+
+        // ====== ฟังก์ชันดึงข้อมูลจาก API ======
+        function loadData(callback) {
+            if(Object.keys(globalData).length === 0) document.getElementById('loading').style.display = 'block';
+            
+            fetch(API_URL)
+                .then(response => response.json())
+                .then(data => {
+                    globalData = data;
+                    globalData.currentUser = currentUserEmail; // อัปเดต User ปัจจุบันเข้าไปใน Data
+
+                    renderCourses(data.courses);
+                    document.getElementById('loading').style.display = 'none';
+                    filterCourses();
+                    if(callback) callback();
+                })
+                .catch(error => {
+                    alert("เกิดข้อผิดพลาดในการดึงข้อมูล กรุณาลองรีเฟรชหน้าเว็บใหม่ครับ");
+                    console.error(error);
+                    document.getElementById('loading').style.display = 'none';
+                });
+        }
+
+        // ====== ฟังก์ชันส่งข้อมูลไปยัง API (POST Wrapper) ======
+        function postDataToAPI(payload, successCallback, btnElement, btnOriginalText) {
+            fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if(result.status === "success") {
+                    successCallback(result);
+                } else {
+                    alert("เกิดข้อผิดพลาด: " + result.message);
+                    if(btnElement) {
+                        btnElement.disabled = false;
+                        btnElement.innerHTML = btnOriginalText;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่อีกครั้ง");
+                if(btnElement) {
+                    btnElement.disabled = false;
+                    btnElement.innerHTML = btnOriginalText;
+                }
+            });
+        }
+
+        // ====== ระบบจัดการรายวิชา (Courses) ======
+        function filterByCategory(category, btnElement) {
+            currentCategoryFilter = category;
+            let btns = document.getElementsByClassName('category-btn');
+            for(let i = 0; i < btns.length; i++) {
+                btns[i].classList.remove('btn-purple');
+                btns[i].classList.add('btn-outline-purple');
+            }
+            btnElement.classList.remove('btn-outline-purple');
+            btnElement.classList.add('btn-purple');
+            filterCourses();
+        }
+
+        function filterCourses() {
+            let input = document.getElementById('searchInput').value.toLowerCase();
+            let items = document.getElementsByClassName('course-item');
+            for (let i = 0; i < items.length; i++) {
+                let code = items[i].querySelector('.card-title').innerText.toLowerCase();
+                let name = items[i].querySelector('.card-text').innerText.toLowerCase();
+                let cardCategory = items[i].querySelector('.badge').innerText;
+                
+                let matchText = code.includes(input) || name.includes(input);
+                let matchCategory = (currentCategoryFilter === 'ทั้งหมด') || cardCategory.includes(currentCategoryFilter.replace('ฯ', ''));
+                
+                items[i].style.display = (matchText && matchCategory) ? "" : "none";
+            }
+        }
+
+        function renderCourses(courses) {
+            let html = '';
+            for (let i = 1; i < courses.length; i++) {
+                if (!courses[i][0]) continue;
+                let rowIndex = i + 1;
+                let code = courses[i][0];
+                let name = courses[i][1];
+                let category = courses[i][2];
+                let creatorEmail = courses[i][3] || "";
+                
+                let actionBtnsHtml = (creatorEmail === globalData.currentUser && globalData.currentUser !== "") 
+                    ? `<button class="btn btn-sm text-secondary" title="แก้ไข" onclick="event.stopPropagation(); openEditCourseModal(${rowIndex}, '${code}', '${name}', '${category}')"><i class="bi bi-pencil-fill"></i></button>
+                       <button class="btn btn-sm text-danger" title="ลบ" onclick="event.stopPropagation(); deleteData('Courses', ${rowIndex})"><i class="bi bi-trash-fill"></i></button>`
+                    : '';
+                    
+                html += `<div class="col-md-4 mb-4 course-item"><div class="card course-card" onclick="openReviewModal('${code}', '${name}')"><div class="card-body"><div class="d-flex justify-content-between align-items-start"><span class="badge">${category}</span><div class="action-btns">${actionBtnsHtml}</div></div><h5 class="card-title text-purple fw-bold">${code}</h5><p class="card-text">${name}</p></div></div></div>`;
+            }
+            document.getElementById('courseList').innerHTML = html;
+        }
+
+        function openCourseModal() {
+            document.getElementById('courseForm').reset();
+            document.getElementById('courseRowIndex').value = "";
+            courseModalInstance.show();
+        }
+
+        function openEditCourseModal(rowIndex, code, name, category) {
+            document.getElementById('courseRowIndex').value = rowIndex;
+            document.getElementById('newCourseCode').value = code;
+            document.getElementById('newCourseName').value = name;
+            document.getElementById('newCourseCategory').value = category;
+            courseModalInstance.show();
+        }
+
+        function handleCourseSubmit(e) {
+            e.preventDefault();
+            let btn = document.getElementById('btnSubmitCourse');
+            let originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = "กำลังบันทึก...";
+
+            let payload = {
+                action: document.getElementById('courseRowIndex').value ? "updateCourse" : "addCourse",
+                rowIndex: document.getElementById('courseRowIndex').value,
+                courseCode: document.getElementById('newCourseCode').value,
+                courseName: document.getElementById('newCourseName').value,
+                category: document.getElementById('newCourseCategory').value,
+                userEmail: currentUserEmail
+            };
+
+            postDataToAPI(payload, function(result) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                courseModalInstance.hide();
+                loadData();
+            }, btn, originalText);
+        }
+
+        // ====== ระบบจัดการรีวิว (Reviews) ======
+        function openReviewModal(code, name) {
+            document.getElementById('reviewModalTitle').innerHTML = `<i class="bi bi-book-half me-2"></i>${code} - ${name}`;
+            document.getElementById('reviewCourseCode').value = code;
+            document.getElementById('reviewFormCollapse').classList.remove('show');
+            renderReviews();
+            reviewModalInstance.show();
+        }
+
+        function prepareNewReview() {
+            document.getElementById('reviewForm').reset();
+            document.getElementById('editReviewRowIndex').value = "";
+            document.getElementById('btnCancelEditReview').style.display = "none";
+            document.getElementById('reviewFormTitle').innerText = "✍️ เขียนรีวิว & ข้อมูลเวลาเรียน";
+        }
+
+        function renderReviews() {
+            let code = document.getElementById('reviewCourseCode').value;
+            let courseName = document.getElementById('reviewModalTitle').innerText.split(' - ')[1];
+            let filterRating = document.getElementById('filterRating').value;
+            let filterSemester = document.getElementById('filterSemester').value;
+            let filterYear = document.getElementById('filterYear').value;
+            
+            let reviews = globalData.reviews;
+            let reviewHtml = '';
+            let hasReview = false;
+            
+            for (let i = reviews.length - 1; i >= 1; i--) {
+                if (reviews[i][1] === code) {
+                    let rating = reviews[i][2];
+                    let text = reviews[i][3];
+                    let semester = reviews[i][4] || "-";
+                    let year = reviews[i][5] || "-";
+                    let teacher = reviews[i][6] || "-";
+                    let sec = reviews[i][7] || "-";
+                    let day = reviews[i][8] || "-";
+                    let start = reviews[i][9] || "-";
+                    let end = reviews[i][10] || "-";
+                    let creatorEmail = reviews[i][11] || "";
+                    
+                    if (filterRating && filterRating != rating) continue;
+                    if (filterSemester && filterSemester != semester) continue;
+                    if (filterYear && filterYear != year) continue;
+                    
+                    hasReview = true;
+                    let rowIndex = i + 1;
+                    let date = new Date(reviews[i][0]).toLocaleDateString('th-TH');
+                    let stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+                    let safeText = text.replace(/`/g, '\\`').replace(/\n/g, '\\n');
+                    
+                    let actionBtnsHtml = (creatorEmail === globalData.currentUser && globalData.currentUser !== "") 
+                        ? `<button class="btn btn-sm text-secondary px-1" title="แก้ไข" onclick="setupEditReview(${rowIndex}, ${rating}, \`${safeText}\`, '${semester}', '${year}', '${teacher}', '${sec}', '${day}', '${start}', '${end}')"><i class="bi bi-pencil-fill"></i></button>
+                           <button class="btn btn-sm text-danger px-1" title="ลบ" onclick="deleteData('Reviews', ${rowIndex})"><i class="bi bi-trash-fill"></i></button>`
+                        : '';
+                        
+                    reviewHtml += `
+                    <div class="review-box">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="star-rating me-2">${stars}</span>
+                                <span class="badge" style="background-color: var(--purple-100); color: var(--purple-700);">เทอม ${semester}/${year}</span>
+                            </div>
+                            <div class="d-flex align-items-center mt-2 mt-sm-0">
+                                <small class="text-muted me-3"><i class="bi bi-clock me-1"></i>${date}</small>
+                                ${actionBtnsHtml}
+                            </div>
+                        </div>
+                        <div class="sec-info-box d-flex justify-content-between align-items-center flex-wrap my-3">
+                            <div>
+                                <span class="badge bg-purple mb-1">${sec}</span>
+                                <span class="fw-bold ms-1 text-dark"><i class="bi bi-person-video3 me-1"></i>อ.${teacher}</span>
+                                <p class="mb-0 text-muted" style="font-size: 0.85rem;"><i class="bi bi-calendar-event me-1"></i>วัน${day} | ⏰ ${start} - ${end} น.</p>
+                            </div>
+                            <button class="btn btn-sm btn-success fw-bold px-3 shadow-sm mt-2 mt-sm-0" onclick="addToMySchedule('${code}', '${courseName}', '${sec}', '${teacher}', '${day}', '${start}', '${end}')">
+                                <i class="bi bi-pin-angle-fill me-1"></i>เพิ่มลงตาราง
+                            </button>
+                        </div>
+                        <p class="mb-0 text-break" style="white-space: pre-wrap;">${text}</p>
+                    </div>`;
+                }
+            }
+            if (!hasReview) reviewHtml = `<div class="text-center py-5"><p class="text-muted">ไม่มีข้อมูลที่ตรงกับตัวกรอง หรือยังไม่มีใครรีวิวครับ</p></div>`;
+            document.getElementById('reviewsContainer').innerHTML = reviewHtml;
+        }
+
+        function setupEditReview(rowIndex, rating, text, semester, year, teacher, sec, day, start, end) {
+            document.getElementById('reviewFormCollapse').classList.add('show');
+            document.getElementById('editReviewRowIndex').value = rowIndex;
+            document.getElementById('reviewRating').value = rating;
+            document.getElementById('reviewText').value = text;
+            document.getElementById('reviewSemester').value = semester;
+            document.getElementById('reviewYear').value = year;
+            document.getElementById('reviewTeacher').value = teacher;
+            document.getElementById('reviewSec').value = sec;
+            document.getElementById('reviewDay').value = day;
+            document.getElementById('reviewStart').value = start;
+            document.getElementById('reviewEnd').value = end;
+            document.getElementById('reviewFormTitle').innerText = "✏️ แก้ไขข้อมูลของคุณ";
+            document.getElementById('btnCancelEditReview').style.display = "block";
+            document.getElementById('reviewFormCollapse').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEditReview() {
+            document.getElementById('reviewForm').reset();
+            document.getElementById('editReviewRowIndex').value = "";
+            document.getElementById('btnCancelEditReview').style.display = "none";
+            document.getElementById('reviewFormCollapse').classList.remove('show');
+        }
+
+        function handleReviewSubmit(e) {
+            e.preventDefault();
+            let btn = document.getElementById('btnSubmitReview');
+            let originalText = btn.innerHTML;
+            btn.disabled = true;
+
+            let payload = {
+                action: document.getElementById('editReviewRowIndex').value ? "updateReview" : "addReview",
+                rowIndex: document.getElementById('editReviewRowIndex').value,
+                courseCode: document.getElementById('reviewCourseCode').value,
+                rating: document.getElementById('reviewRating').value,
+                reviewText: document.getElementById('reviewText').value,
+                semester: document.getElementById('reviewSemester').value,
+                year: document.getElementById('reviewYear').value,
+                teacher: document.getElementById('reviewTeacher').value,
+                sec: document.getElementById('reviewSec').value,
+                day: document.getElementById('reviewDay').value,
+                start: document.getElementById('reviewStart').value,
+                end: document.getElementById('reviewEnd').value,
+                userEmail: currentUserEmail
+            };
+
+            postDataToAPI(payload, function(result) {
+                btn.disabled = false;
+                document.getElementById('reviewForm').reset();
+                document.getElementById('reviewFormCollapse').classList.remove('show');
+                loadData(function(){ renderReviews(); });
+            }, btn, originalText);
+        }
+
+        function renderMyReviewsPage() {
+            let reviews = globalData.reviews;
+            let courses = globalData.courses;
+            let container = document.getElementById('myReviewsList');
+            let html = '';
+            let hasReview = false;
+            
+            for (let i = reviews.length - 1; i >= 1; i--) {
+                if (reviews[i][11] === globalData.currentUser && globalData.currentUser !== "") {
+                    hasReview = true;
+                    let rowIndex = i + 1;
+                    let code = reviews[i][1];
+                    let rating = reviews[i][2];
+                    let text = reviews[i][3];
+                    let semester = reviews[i][4] || "-";
+                    let year = reviews[i][5] || "-";
+                    let date = new Date(reviews[i][0]).toLocaleDateString('th-TH');
+                    let stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+                    
+                    let courseName = "ไม่ระบุชื่อวิชา";
+                    for(let j = 1; j < courses.length; j++) {
+                        if(courses[j][0] === code) { courseName = courses[j][1]; break; }
+                    }
+                    
+                    html += `
+                    <div class="col-md-6 mb-4">
+                        <div class="review-box h-100 position-relative shadow-sm" style="border-radius: 16px;">
+                            <h5 class="text-purple fw-bold mb-1">${code} <span class="fs-6 fw-normal text-muted">- ${courseName}</span></h5>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="star-rating">${stars}</span>
+                                <span class="badge bg-light text-dark border">เทอม ${semester}/${year}</span>
+                            </div>
+                            <p class="text-break" style="font-size: 0.95rem; white-space: pre-wrap;">${text}</p>
+                            <div class="d-flex justify-content-between align-items-end mt-4">
+                                <small class="text-muted"><i class="bi bi-clock me-1"></i>เขียนเมื่อ ${date}</small>
+                                <button class="btn btn-sm btn-outline-danger px-3 rounded-pill" onclick="deleteData('Reviews', ${rowIndex}, true)">
+                                    <i class="bi bi-trash-fill me-1"></i>ลบรีวิวนี้
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+            }
+            if (!hasReview) {
+                html = `
+                <div class="col-12 text-center py-5 my-5">
+                    <i class="bi bi-chat-square-text" style="font-size: 5rem; color: var(--line);"></i>
+                    <h4 class="mt-4 text-purple">คุณยังไม่เคยเขียนรีวิว</h4>
+                    <p class="text-muted">ไปแชร์ประสบการณ์เรียนดีๆ ให้เพื่อนๆ ฟังกันเถอะ!</p>
+                    <button class="btn btn-purple mt-3 px-4" onclick="showHomeView()">กลับไปเลือกวิชา</button>
+                </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        // ====== ฟังก์ชันลบข้อมูล ======
+        function deleteData(sheetName, rowIndex, isFromMyReviews = false) {
+            if(confirm("แน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?")) {
+                let payload = {
+                    action: "deleteData",
+                    sheetName: sheetName,
+                    rowIndex: rowIndex,
+                    userEmail: currentUserEmail
+                };
+                
+                postDataToAPI(payload, function(result) {
+                    loadData(function() {
+                        if(isFromMyReviews) {
+                            renderMyReviewsPage();
+                        } else if(sheetName === 'Reviews') {
+                            renderReviews();
+                        } else {
+                            courseModalInstance.hide();
+                        }
+                    });
+                }, null, null);
+            }
+        }
+
+        // ====== ระบบตารางเรียน (บันทึกในเครื่อง แยกตามอีเมล) ======
+        function addToMySchedule(code, name, sec, teacher, day, start, end) {
+            if(!day || !start || !end || start === "-" || end === "-") {
+                alert("วิชานี้ไม่มีข้อมูลเวลาเรียนที่ชัดเจนครับ");
+                return;
+            }
+            
+            let scheduleKey = 'my_tu_schedule_' + currentUserEmail; // ผูกอีเมลไว้กับตารางเรียน
+            let schedule = JSON.parse(localStorage.getItem(scheduleKey)) || [];
+            let existingIndex = schedule.findIndex(s => s.code === code);
+            
+            if(existingIndex !== -1) {
+                if(!confirm(`วิชา ${code} อยู่ในตารางเรียนแล้ว ต้องการเปลี่ยนเซคชั่นเป็น ${sec} ใช่ไหม?`)) return;
+                schedule.splice(existingIndex, 1);
+            }
+            
+            let conflict = schedule.find(s => s.day === day && ((start >= s.start && start < s.end) || (end > s.start && end <= s.end) || (start <= s.start && end >= s.end)));
+            if(conflict) {
+                alert(`❌ เวลาเรียนชนกัน!\nคุณมีเรียนวิชา ${conflict.code} ในวัน${day} เวลา ${conflict.start}-${conflict.end} น.`);
+                return;
+            }
+            
+            schedule.push({ code, name, sec, teacher, day, start, end });
+            localStorage.setItem(scheduleKey, JSON.stringify(schedule)); // เซฟลงชื่อใหม่
+            
+            if(confirm(`✅ เพิ่ม ${code} ลงตารางเรียนแล้ว!\nต้องการไปดูหน้าตารางเรียนของคุณตอนนี้เลยไหม?`)) {
+                reviewModalInstance.hide();
+                showTimetableView();
+            }
+        }
+
+        function renderTimetablePage() {
+            let scheduleKey = 'my_tu_schedule_' + currentUserEmail; // ดึงตารางตามอีเมล
+            let schedule = JSON.parse(localStorage.getItem(scheduleKey)) || [];
+            let container = document.getElementById('timetableFullContent');
+            
+            if(schedule.length === 0) {
+                container.innerHTML = `<div class="text-center py-5 my-5"><i class="bi bi-calendar-x" style="font-size: 5rem; color: var(--line);"></i><h4 class="mt-4 text-purple">ตารางเรียนยังว่างเปล่า</h4><p class="text-muted">กลับไปที่หน้าหลักแล้วกด "เพิ่มลงตาราง" ในรายละเอียดวิชากันเลย!</p><button class="btn btn-purple mt-3 px-4" onclick="showHomeView()">ไปเลือกวิชาเรียน</button></div>`;
+                return;
+            }
+            
+            const days = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"];
+            let headerHtml = '<div class="time-header-row">';
+            for(let i = 8; i <= 19; i++) {
+                let hour = i < 10 ? '0' + i : i;
+                headerHtml += `<div class="time-header-slot">${hour}:00</div>`;
+            }
+            headerHtml += '</div>';
+            
+            let gridHtml = '';
+            days.forEach(day => {
+                let dayClasses = schedule.filter(s => s.day === day);
+                gridHtml += `<div class="day-row">
+                    <div class="day-label">${day}</div>
+                    <div class="day-track">`;
+                    
+                dayClasses.forEach(c => {
+                    let startParts = c.start.split(':'); let endParts = c.end.split(':');
+                    let startMins = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+                    let endMins = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+                    
+                    let tableStartMins = 8 * 60; let totalMins = 12 * 60;
+                    if(startMins < tableStartMins) startMins = tableStartMins;
+                    if(endMins > tableStartMins + totalMins) endMins = tableStartMins + totalMins;
+                    
+                    let leftPercent = ((startMins - tableStartMins) / totalMins) * 100;
+                    let widthPercent = ((endMins - startMins) / totalMins) * 100;
+                    let colorIndex = (c.code.charCodeAt(0) + c.code.charCodeAt(c.code.length-1)) % 6 + 1;
+                    let originalIndex = schedule.findIndex(x => x.code === c.code && x.day === c.day);
+                    
+                    gridHtml += `
+                    <div class="course-block color-${colorIndex}" style="left: ${leftPercent}%; width: ${widthPercent}%;" onclick="removeCourseFromSchedule(${originalIndex}, '${c.code}')" title="คลิกเพื่อลบวิชานี้">
+                        <div class="c-title">${c.code} <span class="fw-normal opacity-75">(${c.sec})</span></div>
+                        <div class="c-detail text-truncate">อ.${c.teacher}</div>
+                        <div class="c-detail">${c.start}-${c.end}</div>
+                    </div>`;
+                });
+                gridHtml += `</div></div>`;
+            });
+            
+            container.innerHTML = `
+            <div class="timetable-container">
+                <div class="timetable-grid">
+                    ${headerHtml}
+                    ${gridHtml}
+                </div>
+            </div>`;
+        }
+
+        function removeCourseFromSchedule(index, code) {
+            if(!confirm(`ต้องการลบวิชา ${code} ออกจากตารางเรียนใช่ไหม?`)) return;
+            
+            let scheduleKey = 'my_tu_schedule_' + currentUserEmail; // อ้างอิงตามอีเมล
+            let schedule = JSON.parse(localStorage.getItem(scheduleKey)) || [];
+            schedule.splice(index, 1);
+            localStorage.setItem(scheduleKey, JSON.stringify(schedule));
+            
+            renderTimetablePage();
+        }
+
+        function clearSchedule() {
+            if(confirm("คำเตือน: คุณต้องการล้างตารางเรียนทั้งหมดใช่หรือไม่?")) {
+                let scheduleKey = 'my_tu_schedule_' + currentUserEmail; // อ้างอิงตามอีเมล
+                localStorage.removeItem(scheduleKey);
+                renderTimetablePage();
+            }
+        }
+    </script>
+</body>
+</html>
