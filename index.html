@@ -214,7 +214,7 @@
         .color-5 { background: #dbeafe; border-left: 5px solid #2563eb; color: #1e3a8a; }
         .color-6 { background: #f3e8ff; border-left: 5px solid #9333ea; color: #581c87; }
         
-        /* ดีไซน์หน้า Login Google มาตรฐาน */
+        /* หน้าจอหลัก Login & แจ้งเตือนเปิดนอกแอป */
         #loginOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: var(--mint-bg);
@@ -232,11 +232,33 @@
             border-radius: 16px; margin-bottom: 15px; width: 100%;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
+        
+        /* หน้าจอเตือนเฉพาะเมื่อเปิดผ่าน LINE / IG */
+        #inAppBrowserWarning {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #2A1B47; color: white; z-index: 10000;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            padding: 30px; text-align: center;
+        }
     </style>
 </head>
 <body>
 
-    <!-- หน้าจอ Login Google ทางการ พร้อมคำแนะนำสำหรับผู้เปิดผ่าน LINE / IG -->
+    <!-- 🚨 หน้าจอแนะนำให้เปิดใน Browser ภายนอก (แสดงเฉพาะตอนเปิดผ่าน LINE / IG) -->
+    <div id="inAppBrowserWarning">
+        <div style="font-size: 3.5rem; margin-bottom: 15px;">👉</div>
+        <h3 class="fw-bold mb-3" style="font-family: 'Kanit', sans-serif;">กรุณาเปิดในเบราว์เซอร์ภายนอก</h3>
+        <p class="mb-4" style="opacity: 0.9; font-size: 0.95rem; line-height: 1.6;">
+            คุณกำลังเปิดผ่านแอปพลิเคชัน LINE หรือ Instagram<br>
+            เพื่อความปลอดภัยและป้องกันข้อผิดพลาดในการเข้าสู่ระบบ Google<br>
+            <strong>กรุณากดปุ่มจุดสามจุด (...) มุมขวาบน แล้วเลือก "เปิดในเบราว์เซอร์เริ่มต้น"</strong>[span_1](start_span)[span_1](end_span)
+        </p>
+        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.3); width: 100%; max-width: 320px;">
+            <small style="opacity: 0.8;"><i class="bi bi-info-circle me-1"></i> หรือคัดลอกลิงก์ไปเปิดใน Safari / Chrome</small>
+        </div>
+    </div>
+
+    <!-- หน้าจอ Login Google ปกติ -->
     <div id="loginOverlay" style="display: none;">
         <div class="login-card">
             <img src="https://i.postimg.cc/FFk3NRHV/IMG-0677.jpg" class="img-fluid login-banner-img" alt="Varasarn Banner">
@@ -245,17 +267,10 @@
                 พื้นที่รวบรวมรีวิววิชาเรียนและจัดตารางเรียนส่วนตัว ดูแลโดย กน.วส.
             </p>
             
-            <!-- 📌 หมายเหตุคำแนะนำเปิดผ่าน LINE/IG ป้องกัน Error -->
-            <div class="alert alert-warning py-2 px-3 mb-3 text-start shadow-sm" style="font-size: 0.78rem; border-radius: 10px; background-color: #fff9db; border-color: #f59f00; color: #5c3b00;">
-                <i class="bi bi-info-circle-fill me-1"></i> <strong>คำแนะนำสำหรับผู้เปิดผ่าน LINE / IG:</strong><br>
-                หากกดล็อกอินแล้วเกิดข้อผิดพลาด ให้กดจุดสามจุด <strong>(...)</strong> มุมขวาบน แล้วเลือก <strong>"เปิดในเบราว์เซอร์ภายนอก"</strong> ก่อนเข้าสู่ระบบครับ
-            </div>
-
             <div class="p-2 mb-3 rounded-3" style="background-color: var(--purple-50); border: 1px dashed var(--purple-300);">
                 <small class="text-purple fw-medium">✨ กรุณาเข้าสู่ระบบด้วยบัญชี Google เพื่อใช้งานระบบ</small>
             </div>
 
-            <!-- ปุ่ม Google Sign-In มาตรฐาน -->
             <div id="googleSignInButton" class="d-flex justify-content-center"></div>
         </div>
     </div>
@@ -473,6 +488,17 @@
         let currentUserEmail = "";
 
         window.onload = function() {
+            // ฟังก์ชันเช็คว่าเป็นแอป LINE หรือ Instagram หรือไม่
+            const ua = navigator.userAgent || navigator.vendor || window.opera;
+            const isLine = (ua.indexOf("Line") > -1);
+            const isInstagram = (ua.indexOf("Instagram") > -1);
+
+            if (isLine || isInstagram) {
+                // ถ้าเปิดผ่าน LINE หรือ IG ให้แสดงหน้าจอเตือนบังคับเปิดเบราว์เซอร์ภายนอกทันที
+                document.getElementById('inAppBrowserWarning').style.display = 'flex';
+                return; // หยุดการทำงานส่วนอื่นไว้ก่อน
+            }
+
             courseModalInstance = new bootstrap.Modal(document.getElementById('courseModal'));
             reviewModalInstance = new bootstrap.Modal(document.getElementById('reviewModal'));
             
