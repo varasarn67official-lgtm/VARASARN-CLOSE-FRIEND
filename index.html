@@ -212,7 +212,7 @@
         .color-5 { background: #dbeafe; border-left: 5px solid #2563eb; color: #1e3a8a; }
         .color-6 { background: #f3e8ff; border-left: 5px solid #9333ea; color: #581c87; }
         
-        /* ดีไซน์หน้า Login สวยงาม รองรับเปิดจาก LINE ไม่ติด Error */
+        /* ดีไซน์หน้า Login */
         #loginOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: var(--mint-bg);
@@ -234,7 +234,7 @@
 </head>
 <body>
 
-    <!-- หน้าจอ Login แบบกรอกอีเมล (ใช้งานได้ชัวร์ 100% ไม่ติด Error จาก LINE) -->
+    <!-- หน้าจอ Login แบบกรอกอีเมล พร้อมหมายเหตุคำแนะนำ -->
     <div id="loginOverlay" style="display: none;">
         <div class="login-card">
             <img src="https://i.postimg.cc/FFk3NRHV/IMG-0677.jpg" class="img-fluid login-banner-img" alt="Varasarn Banner">
@@ -245,6 +245,12 @@
             
             <div class="p-3 mb-3 rounded-3" style="background-color: var(--purple-50); border: 1px dashed var(--purple-300);">
                 <small class="text-purple fw-medium">✨ กรุณากรอก Email ของคุณเพื่อเข้าใช้งานระบบ</small>
+            </div>
+
+            <!-- 📌 หมายเหตุแนะนำสำหรับผู้ใช้งานผ่าน LINE / Instagram -->
+            <div class="alert alert-warning py-2 px-3 mb-3 text-start" style="font-size: 0.8rem; border-radius: 10px; background-color: #fff9db; border-color: #f59f00; color: #5c3b00;">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>คำแนะนำสำหรับผู้เปิดผ่าน LINE / IG:</strong><br>
+                หากพบปัญหาการใช้งาน แนะนำให้กดปุ่ม <strong>จุดสามจุด (...)</strong> มุมขวาบน แล้วเลือก <strong>"เปิดในเบราว์เซอร์ภายนอก" (Open in Browser)</strong> หรือคัดลอกลิงก์ไปเปิดใน Chrome / Safari โดยตรงครับ
             </div>
 
             <form onsubmit="handleManualLogin(event)">
@@ -482,7 +488,7 @@
             }
         };
 
-        // ฟังก์ชันรับอีเมลเข้าสู่ระบบ (ทำงานเสถียร ไม่ติด Error Google API)
+        // ฟังก์ชันรับอีเมลเข้าสู่ระบบ
         function handleManualLogin(e) {
             e.preventDefault();
             let email = document.getElementById('loginEmailInput').value.trim();
