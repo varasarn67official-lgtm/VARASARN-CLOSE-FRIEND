@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Varasarn Close Friends</title>
+    <!-- Google Identity Services Script สำหรับระบบ Google Login -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -337,7 +339,7 @@
                         <div class="mb-3"><label>ชื่อวิชา</label><input type="text" class="form-control" id="newCourseName" required></div>
                         <div class="mb-4"><label>หมวดหมู่</label>
                             <select class="form-select" id="newCourseCategory" required>
-                                <option value="วิชาศึกษาทั่วไป">วิชาศึกษาทั่วไป</option><option value="วิชาแกนคณะ">วิชาแกนคณะ</option><option value="วิชาบังคับเลือกหมวด">วิชาบังคับเลือกหมวด</option><option value="กลุ่มวิชาวารสารศาสตร์">กลุ่มวิชาวารสารศาสตร์</option><option value="กลุ่มวิชาบริหารการสื่อสาร">กลุ่มวิชาบริหารการสื่อสาร</option><option value="กลุ่มวิชาวิทยุโทรทัศน์และสื่อดิจิทัล">กลุ่มวิชาวิทยุโทรทัศน์และสื่อดิจิทัล</option><option value="กลุ่มวิชาสื่อสารองค์กร">กลุ่มวิชาสื่อสารองค์กร</option><option value="กลุ่มวิชาโฆษณา">กลุ่มวิชาโฆษณา</option><option value="กลุ่มวิชาภาพยนตร์และภาพถ่าย">กลุ่มวิชาภาพยนตร์และภาพถ่าย</option><option value="วิชาบังคับนอกคณะ">วิชาบังคับนอกคณะ</option><option value="วิชาโทหรือวิชาเลือก">วิชาโทหรือวิชาเลือก</option><option value="วิชาเลือกเสรี">วิชาเลือกเสรี</option>
+                                <option value="วิชาศึกษาทั่วไป">วิชาศึกษาทั่วไป</option><option value="วิชาแกนคณะ">วิชาแกนคณะ</option><option value="วิชาบังคับเลือกหมวด">วิชาบังคับเลือกหมวด</option><option value="กลุ่มวิชาวารสารศาสตร์">กลุ่มวิชาวารสารศาสตร์</option><option value="กลุ่มวิชาบริหารการสื่อสาร">กลุ่มวิชาบริหารการสื่อสาร</option><option value="กลุ่มวิชาวิทยุโทรทัศน์และสื่อดิจิทัล">กลุ่มวิชาวิทยุโทรทัศน์และสื่อดิจิทัล</option><option value="กลุ่มวิชาสื่อสารองค์กร">กลุ่มวิชาสื่อสารองค์กร</option><option value="กลุ่มวิชาโฆษณา">กลุ่มวิชาโฆษณา</option><option value="กลุ่มวิชาภาพยนตร์และภาพถ่าย">กลุ่มวิชาภาพยนตร์ฯ</option><option value="วิชาบังคับนอกคณะ">วิชาบังคับนอกคณะ</option><option value="วิชาโทหรือวิชาเลือก">วิชาโทหรือวิชาเลือก</option><option value="วิชาเลือกเสรี">วิชาเลือกเสรี</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-purple w-100 py-2" id="btnSubmitCourse"><i class="bi bi-save me-1"></i>บันทึก</button>
@@ -419,10 +421,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // ==========================================
-        // API URL ที่คุณได้มา ใส่ไว้ตรงนี้เรียบร้อยแล้วครับ ✅
-        // ==========================================
         const API_URL = "https://script.google.com/macros/s/AKfycbxbk3B29ZWT4fO0GlJ6uZAKAdH5flxfGrQ6NSDCGJCMtdbITU56KPKGmiqvKvEziM0z/exec"; 
+        const GOOGLE_CLIENT_ID = "515558913820-oi39iuu6fb4lpdpm42ji26q43q5njm99.apps.googleusercontent.com";
 
         let globalData = {};
         let courseModalInstance, reviewModalInstance;
@@ -433,25 +433,73 @@
             courseModalInstance = new bootstrap.Modal(document.getElementById('courseModal'));
             reviewModalInstance = new bootstrap.Modal(document.getElementById('reviewModal'));
             
-            // ระบบ Login ชั่วคราว (เก็บในเครื่อง)
             currentUserEmail = localStorage.getItem("varasarn_user_email");
+            
             if (!currentUserEmail) {
-                let inputEmail = prompt("ยินดีต้อนรับสู่ Varasarn Close Friends!\n\nกรุณากรอก Email ของคุณเพื่อเข้าใช้งาน:");
-                if(inputEmail && inputEmail.trim() !== "") {
-                    currentUserEmail = inputEmail.trim();
+                initGoogleLogin();
+            } else {
+                setupUserSession();
+            }
+        };
+
+        // ระบบ Google Sign-In จริง
+        function initGoogleLogin() {
+            if (typeof google !== 'undefined') {
+                google.accounts.id.initialize({
+                    client_id: GOOGLE_CLIENT_ID,
+                    callback: handleCredentialResponse
+                });
+                google.accounts.id.prompt((notification) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        // ถ้าหน้าต่างอัตโนมัติไม่ขึ้น ให้บังคับให้ผู้ใช้กดล็อกอินผ่านหน้าเว็บแทน
+                        showLoginButtonModal();
+                    }
+                });
+            } else {
+                // ถ้าโหลด Script ช้า ให้ใช้ Prompt สำรอง
+                let fallback = prompt("กรุณากรอก Email มหาวิทยาลัยของคุณเพื่อเข้าใช้งาน:");
+                if(fallback && fallback.trim() !== "") {
+                    currentUserEmail = fallback.trim();
                     localStorage.setItem("varasarn_user_email", currentUserEmail);
-                } else {
-                    currentUserEmail = "guest@domain.com"; // ถ้าไม่กรอกให้เป็น Guest ไปก่อน
+                    setupUserSession();
                 }
             }
+        }
 
-            // แสดงชื่อผู้ใช้
+        function handleCredentialResponse(response) {
+            let responsePayload = parseJwt(response.credential);
+            currentUserEmail = responsePayload.email;
+            localStorage.setItem("varasarn_user_email", currentUserEmail);
+            setupUserSession();
+        }
+
+        function parseJwt(token) {
+            var base64Url = token.split('.')[1];
+            var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('0' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        }
+
+        function setupUserSession() {
             let shortEmail = currentUserEmail.split('@')[0];
             document.getElementById('userEmailDisplay').innerHTML = `<i class="bi bi-person-circle me-1"></i>${shortEmail}`;
             document.getElementById('userEmailDisplayMobile').innerHTML = `<i class="bi bi-person-circle me-1"></i>${shortEmail}`;
-
             loadData();
-        };
+        }
+
+        function showLoginButtonModal() {
+            let emailInput = prompt("ยินดีต้อนรับสู่ Varasarn Close Friends\n\nกรุณากรอก Email ของคุณเพื่อเข้าใช้งาน:");
+            if(emailInput && emailInput.trim() !== "") {
+                currentUserEmail = emailInput.trim();
+                localStorage.setItem("varasarn_user_email", currentUserEmail);
+                setupUserSession();
+            } else {
+                currentUserEmail = "guest@domain.com";
+                setupUserSession();
+            }
+        }
 
         // ====== ฟังก์ชันการเปลี่ยนหน้าเว็บ ======
         function showHomeView() {
@@ -478,9 +526,9 @@
         }
 
         function handleLogout() {
-            if(confirm("คุณต้องการออกจากระบบ (ล้างข้อมูล Email ในเครื่องนี้) ใช่หรือไม่?")) {
+            if(confirm("คุณต้องการออกจากระบบ ใช่หรือไม่?")) {
                 localStorage.removeItem("varasarn_user_email");
-                location.reload(); // รีเฟรชหน้าเว็บเพื่อเข้าสู่ระบบใหม่
+                location.reload();
             }
         }
 
@@ -492,7 +540,7 @@
                 .then(response => response.json())
                 .then(data => {
                     globalData = data;
-                    globalData.currentUser = currentUserEmail; // อัปเดต User ปัจจุบันเข้าไปใน Data
+                    globalData.currentUser = currentUserEmail;
 
                     renderCourses(data.courses);
                     document.getElementById('loading').style.display = 'none';
@@ -845,7 +893,7 @@
                 return;
             }
             
-            let scheduleKey = 'my_tu_schedule_' + currentUserEmail; // ผูกอีเมลไว้กับตารางเรียน
+            let scheduleKey = 'my_tu_schedule_' + currentUserEmail;
             let schedule = JSON.parse(localStorage.getItem(scheduleKey)) || [];
             let existingIndex = schedule.findIndex(s => s.code === code);
             
@@ -861,7 +909,7 @@
             }
             
             schedule.push({ code, name, sec, teacher, day, start, end });
-            localStorage.setItem(scheduleKey, JSON.stringify(schedule)); // เซฟลงชื่อใหม่
+            localStorage.setItem(scheduleKey, JSON.stringify(schedule));
             
             if(confirm(`✅ เพิ่ม ${code} ลงตารางเรียนแล้ว!\nต้องการไปดูหน้าตารางเรียนของคุณตอนนี้เลยไหม?`)) {
                 reviewModalInstance.hide();
@@ -870,7 +918,7 @@
         }
 
         function renderTimetablePage() {
-            let scheduleKey = 'my_tu_schedule_' + currentUserEmail; // ดึงตารางตามอีเมล
+            let scheduleKey = 'my_tu_schedule_' + currentUserEmail;
             let schedule = JSON.parse(localStorage.getItem(scheduleKey)) || [];
             let container = document.getElementById('timetableFullContent');
             
@@ -930,7 +978,7 @@
         function removeCourseFromSchedule(index, code) {
             if(!confirm(`ต้องการลบวิชา ${code} ออกจากตารางเรียนใช่ไหม?`)) return;
             
-            let scheduleKey = 'my_tu_schedule_' + currentUserEmail; // อ้างอิงตามอีเมล
+            let scheduleKey = 'my_tu_schedule_' + currentUserEmail;
             let schedule = JSON.parse(localStorage.getItem(scheduleKey)) || [];
             schedule.splice(index, 1);
             localStorage.setItem(scheduleKey, JSON.stringify(schedule));
@@ -940,7 +988,7 @@
 
         function clearSchedule() {
             if(confirm("คำเตือน: คุณต้องการล้างตารางเรียนทั้งหมดใช่หรือไม่?")) {
-                let scheduleKey = 'my_tu_schedule_' + currentUserEmail; // อ้างอิงตามอีเมล
+                let scheduleKey = 'my_tu_schedule_' + currentUserEmail;
                 localStorage.removeItem(scheduleKey);
                 renderTimetablePage();
             }
