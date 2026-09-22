@@ -583,7 +583,10 @@
         function loadData(callback) {
             if(Object.keys(globalData).length === 0) document.getElementById('loading').style.display = 'block';
             
-            fetch(API_URL)
+            // ส่งอีเมลของเราไปบอกหลังบ้าน ผ่านตัวแปร ?user= 
+            let fetchUrl = currentUserEmail ? API_URL + "?user=" + encodeURIComponent(currentUserEmail) : API_URL;
+            
+            fetch(fetchUrl)
                 .then(response => response.json())
                 .then(data => {
                     globalData = data;
@@ -601,6 +604,7 @@
                 });
         }
 
+        
         function postDataToAPI(payload, successCallback, btnElement, btnOriginalText) {
             fetch(API_URL, {
                 method: "POST",
