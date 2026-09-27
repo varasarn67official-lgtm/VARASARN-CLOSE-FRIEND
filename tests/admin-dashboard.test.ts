@@ -3,13 +3,16 @@ import { flushPromises, mount } from '@vue/test-utils'
 import App from '../src/App.vue'
 
 const fixture = vi.hoisted(() => ({
+  courseGate: null as Promise<void> | null,
+  courseFailures: 0,
+  categoryFailures: 0,
   role: null as 'owner' | 'administrator' | null,
   categories: [{ id: 'cat-1', name: 'วิชาศึกษาทั่วไป' }],
   catalog: [{ id: 'course-1', code: 'JC100', name_th: 'วารสารศาสตร์', category_name: 'วิชาศึกษาทั่วไป' }],
   managedCourses: [{ id: 'course-1', code: 'JC100', name_th: 'วารสารศาสตร์', category_id: 'cat-1', category_name: 'วิชาศึกษาทั่วไป', status: 'approved' }],
   periods: [] as Array<{ id: string; academic_year: number; semester: string }>,
   proposals: [{ id: 'proposal-1', course_code: 'JC100', academic_year: 2569, semester: '1', section: '2', instructor_name: 'อาจารย์เอ' }],
-  moderationReviews: [{ id: 'review-1', rating: 5, text: 'ดีมาก', author_active: true, moderation_state: 'visible' as 'visible' | 'hidden' | 'removed', created_at: '2026-01-01' }],
+  moderationReviews: [{ id: 'review-1', rating: 5, text: 'ดีมาก', author_active: true, moderation_state: 'visible' as 'visible' | 'hidden' | 'removed', created_at: '2026-01-01', course_code: undefined as string | undefined, course_name: undefined as string | undefined }],
   moderationAudit: [] as Array<{ id: string; prior_state: string; new_state: string; reason: string; actor_name: string; created_at: string }>,
   members: [{ user_id: 'owner-1', name: 'Owner', email: 'owner@example.com', role: 'owner' as const, granted_at: '2026-01-01' }],
   verifiedAccounts: [{ id: 'user-2', name: 'Bee', email: 'bee@example.com' }],
@@ -23,8 +26,16 @@ vi.mock('../src/neon', () => ({
       fixture.calls.push({ name, args })
       if (name === 'current_access') return { data: [{ role: fixture.role }], error: null }
       if (name === 'list_approved_catalog') return { data: fixture.catalog, error: null }
-      if (name === 'list_categories') return { data: fixture.categories, error: null }
-      if (name === 'list_manageable_courses') return { data: fixture.managedCourses, error: null }
+      if (name === 'list_categories') {
+        if (fixture.categoryFailures > 0) { fixture.categoryFailures--; return { data: null, error: { message: 'failed' } } }
+        return { data: fixture.categories, error: null }
+      }
+      if (name === 'update_category' || name === 'create_category') return { data: null, error: null }
+      if (name === 'list_manageable_courses') {
+        if (fixture.courseGate) await fixture.courseGate
+        if (fixture.courseFailures > 0) { fixture.courseFailures--; return { data: null, error: { message: 'network failed' } } }
+        return { data: fixture.managedCourses, error: null }
+      }
       if (name === 'list_academic_periods') return { data: fixture.periods, error: null }
       if (name === 'list_pending_offering_proposals') return { data: fixture.proposals, error: null }
       if (name === 'list_moderation_reviews') {
@@ -78,12 +89,16 @@ function navItem(wrapper: ReturnType<typeof mount>, label: string) {
 describe('admin dashboard', () => {
   afterEach(() => vi.unstubAllGlobals())
   beforeEach(() => {
+    fixture.courseGate = null
+    fixture.courseFailures = 0
+    fixture.categoryFailures = 0
+    fixture.categories = [{ id: 'cat-1', name: 'วิชาศึกษาทั่วไป' }]
     fixture.role = null
     fixture.calls.length = 0
     fixture.catalog = [{ id: 'course-1', code: 'JC100', name_th: 'วารสารศาสตร์', category_name: 'วิชาศึกษาทั่วไป' }]
     fixture.managedCourses = [{ id: 'course-1', code: 'JC100', name_th: 'วารสารศาสตร์', category_id: 'cat-1', category_name: 'วิชาศึกษาทั่วไป', status: 'approved' }]
     fixture.proposals = [{ id: 'proposal-1', course_code: 'JC100', academic_year: 2569, semester: '1', section: '2', instructor_name: 'อาจารย์เอ' }]
-    fixture.moderationReviews = [{ id: 'review-1', rating: 5, text: 'ดีมาก', author_active: true, moderation_state: 'visible' as const, created_at: '2026-01-01' }]
+    fixture.moderationReviews = [{ id: 'review-1', rating: 5, text: 'ดีมาก', author_active: true, moderation_state: 'visible' as const, created_at: '2026-01-01', course_code: undefined, course_name: undefined }]
     fixture.moderationAudit = []
   })
 
@@ -102,26 +117,17 @@ describe('admin dashboard', () => {
     wrapper.unmount()
   })
 
-  it('hides ผู้ดูแลระบบ from an administrator and shows it with Thai role labels for an owner', async () => {
-    fixture.role = 'administrator'
+  it.each(['administrator', 'owner'] as const)('shows only three tabs for %s without fetching hidden sections', async (role) => {
+    fixture.role = role
     const wrapper = mount(App)
     await flushPromises()
     await openDashboard(wrapper)
-    expect(navItem(wrapper, 'ผู้ดูแลระบบ')).toBeUndefined()
+    expect(wrapper.findAll('.admin-nav-item').map((item) => item.text())).toEqual(['รายวิชา', 'หมวดหมู่', 'รีวิว'])
+    expect(wrapper.find('.admin-nav-badge').exists()).toBe(false)
+    for (const name of ['list_pending_offering_proposals', 'list_academic_periods', 'list_role_assignments', 'list_verified_accounts']) {
+      expect(fixture.calls.some((call) => call.name === name)).toBe(false)
+    }
     wrapper.unmount()
-
-    fixture.role = 'owner'
-    const ownerWrapper = mount(App)
-    await flushPromises()
-    await openDashboard(ownerWrapper)
-    const rolesItem = navItem(ownerWrapper, 'ผู้ดูแลระบบ')
-    expect(rolesItem).toBeDefined()
-    await rolesItem!.trigger('click')
-    await flushPromises()
-    expect(fixture.calls.some((call) => call.name === 'list_role_assignments')).toBe(true)
-    expect(fixture.calls.some((call) => call.name === 'list_verified_accounts')).toBe(true)
-    expect(ownerWrapper.get('.admin-content').text()).toContain('เจ้าของระบบ')
-    ownerWrapper.unmount()
   })
 
   it('creates a course with the normalised code, toasts, and refetches the public catalog', async () => {
@@ -164,25 +170,12 @@ describe('admin dashboard', () => {
     wrapper.unmount()
   })
 
-  it('shows the pending-proposal badge and drops the count when a proposal is approved', async () => {
+  it('shows review course/date and requires choosing an action then a reason, with one panel at a time', async () => {
     fixture.role = 'administrator'
-    const wrapper = mount(App)
-    await flushPromises()
-    await openDashboard(wrapper)
-
-    expect(navItem(wrapper, 'ขอกลุ่มเรียน')!.text()).toContain('1')
-    await navItem(wrapper, 'ขอกลุ่มเรียน')!.trigger('click')
-    await flushPromises()
-    await wrapper.get('.admin-content .btn-purple').trigger('click')
-    await flushPromises()
-
-    expect(fixture.calls).toContainEqual({ name: 'resolve_offering_proposal', args: { p_proposal_id: 'proposal-1', p_approve: true } })
-    expect(wrapper.find('.admin-nav-badge').exists()).toBe(false)
-    wrapper.unmount()
-  })
-
-  it('reloads the moderation list when the state filter changes and sends the typed reason', async () => {
-    fixture.role = 'administrator'
+    fixture.moderationReviews = [
+      { id: 'review-1', rating: 5, text: 'ดีมาก', author_active: true, moderation_state: 'visible', created_at: '2026-09-25T05:00:00Z', course_code: 'JC100', course_name: 'วารสารศาสตร์' },
+      { id: 'review-2', rating: 2, text: 'อีกรีวิว', author_active: true, moderation_state: 'visible', created_at: '2026-09-25T05:00:00Z', course_code: 'TU100', course_name: 'สังคม' },
+    ]
     const wrapper = mount(App)
     await flushPromises()
     await openDashboard(wrapper)
@@ -190,48 +183,224 @@ describe('admin dashboard', () => {
     await flushPromises()
     expect(wrapper.get('.admin-content').text()).toContain('★★★★★')
     expect(wrapper.get('.admin-content').text()).toContain('ให้คะแนน 5 จาก 5 ดาว')
-    fixture.calls.length = 0
-
-    await wrapper.get('#admin-review-state').setValue('hidden')
+    expect(wrapper.get('.admin-content').text()).toContain('JC100')
+    expect(wrapper.get('.admin-content').text()).toContain('วารสารศาสตร์')
+    expect(wrapper.get('.admin-content').text()).toContain('25 ก.ย. 2569')
+    expect(wrapper.find('textarea').exists()).toBe(false)
+    const rows = wrapper.findAll('.admin-review-row')
+    await rows[0]!.findAll('button').find((b) => b.text() === 'ซ่อน')!.trigger('click')
+    expect(wrapper.get('.admin-reason-panel button.btn-purple').attributes('disabled')).toBeDefined()
+    await wrapper.get('textarea').setValue('   ')
+    expect(wrapper.get('.admin-reason-panel button.btn-purple').attributes('disabled')).toBeDefined()
+    await rows[1]!.findAll('button').find((b) => b.text() === 'ซ่อน')!.trigger('click')
+    expect(wrapper.findAll('textarea')).toHaveLength(1)
+    expect(wrapper.find('[aria-label="เหตุผลสำหรับรีวิว review-1"]').exists()).toBe(false)
+    await wrapper.get('textarea').setValue('ไม่เหมาะสม')
+    expect(wrapper.get('.admin-reason-panel button.btn-purple').attributes('disabled')).toBeUndefined()
+    await wrapper.get('.admin-reason-panel').trigger('submit')
+    await flushPromises()
+    expect(fixture.calls).toContainEqual({ name: 'moderate_review', args: { p_review_id: 'review-2', p_state: 'hidden', p_reason: 'ไม่เหมาะสม' } })
+    expect(wrapper.get('.toast-banner').text()).toContain('เปลี่ยนสถานะรีวิวสำเร็จ')
+    expect(wrapper.find('textarea').exists()).toBe(false)
+    await wrapper.findAll('.admin-review-chips button').find((b) => b.text() === 'ซ่อน')!.trigger('click')
     await flushPromises()
     expect(fixture.calls).toContainEqual({ name: 'list_moderation_reviews', args: { p_state: 'hidden' } })
-
-    await wrapper.get('#admin-review-state').setValue('all')
-    await flushPromises()
-    await wrapper.get('[aria-label="เหตุผลสำหรับรีวิว review-1"]').setValue('ไม่เหมาะสม')
-    await wrapper.get('.admin-content .btn-outline-danger').trigger('click')
-    await flushPromises()
-    expect(fixture.calls).toContainEqual({ name: 'moderate_review', args: { p_review_id: 'review-1', p_state: 'hidden', p_reason: 'ไม่เหมาะสม' } })
     wrapper.unmount()
   })
 
-  it('keeps pasted bulk-import text after switching to another section and back', async () => {
+  it('shows six busy skeleton rows without counts or no-match text until courses arrive', async () => {
     fixture.role = 'administrator'
+    let release!: () => void
+    fixture.courseGate = new Promise<void>((resolve) => { release = resolve })
     const wrapper = mount(App)
     await flushPromises()
     await openDashboard(wrapper)
-    await navItem(wrapper, 'นำเข้ารายวิชา')!.trigger('click')
+    expect(wrapper.get('.admin-course-results').attributes('aria-busy')).toBe('true')
+    expect(wrapper.findAll('.admin-skeleton-row')).toHaveLength(6)
+    expect(wrapper.get('.admin-content').text()).not.toContain('พบ 0')
+    expect(wrapper.get('.admin-content').text()).not.toContain('ไม่พบรายวิชา')
+    expect(wrapper.find('.admin-chip-count').exists()).toBe(false)
+    release()
     await flushPromises()
-    await wrapper.get('textarea[aria-label="ข้อมูลนำเข้ากลุ่มเรียน (JSON)"]').setValue('[{"draft":true}]')
+    expect(wrapper.get('.admin-course-results').attributes('aria-busy')).toBe('false')
+    expect(wrapper.get('.admin-content').text()).toContain('JC100')
+    wrapper.unmount()
+  })
 
+  it('retries a failed course list while categories still load independently', async () => {
+    fixture.role = 'administrator'
+    fixture.courseFailures = 1
+    const wrapper = mount(App)
+    await flushPromises()
+    await openDashboard(wrapper)
+    expect(wrapper.get('.admin-content').text()).toContain('โหลดรายวิชาไม่สำเร็จ')
+    expect(wrapper.get('.admin-content').text()).not.toContain('ไม่พบรายวิชา')
+    expect(wrapper.find('.admin-chip-count').exists()).toBe(false)
+    await navItem(wrapper, 'หมวดหมู่')!.trigger('click')
+    expect(wrapper.get('.admin-content').text()).toContain('วิชาศึกษาทั่วไป')
     await navItem(wrapper, 'รายวิชา')!.trigger('click')
+    await wrapper.findAll('.admin-content button').find((b) => b.text() === 'ลองใหม่')!.trigger('click')
     await flushPromises()
-    await navItem(wrapper, 'นำเข้ารายวิชา')!.trigger('click')
-    await flushPromises()
-
-    expect((wrapper.get('textarea[aria-label="ข้อมูลนำเข้ากลุ่มเรียน (JSON)"]').element as HTMLTextAreaElement).value).toBe('[{"draft":true}]')
+    expect(wrapper.get('.admin-content').text()).toContain('JC100')
+    expect(wrapper.get('.admin-content').text()).not.toContain('โหลดรายวิชาไม่สำเร็จ')
     wrapper.unmount()
   })
 
-  it('renders the unchanged import example in a preformatted code block', async () => {
+  it('matches course codes without case or spaces, counts statuses, and clears each empty filter', async () => {
+    fixture.role = 'administrator'
+    fixture.managedCourses.push({ id: 'archived', code: 'JC101', name_th: 'เก่า', category_id: 'cat-1', category_name: 'วิชาศึกษาทั่วไป', status: 'archived' })
+    const wrapper = mount(App)
+    await flushPromises()
+    await openDashboard(wrapper)
+    await wrapper.get('#admin-course-search').setValue('jc 1')
+    const chip = (label: string) => wrapper.findAll('.admin-status-chips button').find((b) => b.text().startsWith(label))!
+    expect(chip('ทั้งหมด').text()).toBe('ทั้งหมด2')
+    expect(chip('ใช้งานอยู่').text()).toBe('ใช้งานอยู่1')
+    expect(chip('อยู่ในคลัง').text()).toBe('อยู่ในคลัง1')
+    await chip('อยู่ในคลัง').trigger('click')
+    expect(chip('อยู่ในคลัง').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.findAll('tbody tr')).toHaveLength(1)
+    expect(wrapper.get('tbody').text()).toContain('JC101')
+    expect(wrapper.get('tbody').text()).toContain('อยู่ในคลัง')
+    expect(wrapper.find('tbody .btn-outline-danger').exists()).toBe(false)
+    expect(wrapper.get('tbody button').attributes('aria-label')).toBe('แก้ไข JC101')
+    await wrapper.get('#admin-course-category').setValue('cat-1')
+    await wrapper.get('#admin-course-search').setValue('missing')
+    expect(chip('ทั้งหมด').text()).toBe('ทั้งหมด0')
+    expect(wrapper.get('.admin-empty').text()).toContain('“missing”')
+    expect(wrapper.findAll('.admin-empty button').map((b) => b.text())).toEqual(['ล้างคำค้นหา', 'ทุกหมวดหมู่', 'ทุกสถานะ'])
+    await wrapper.get('.admin-empty button').trigger('click')
+    expect(wrapper.get('tbody').text()).toContain('JC101')
+    expect(wrapper.get('tbody').text()).not.toContain('JC100')
+    wrapper.unmount()
+  })
+
+  it('shows category counts including archived courses, marks zero, saves Enter and cancels Escape', async () => {
+    fixture.role = 'administrator'
+    fixture.categories.push({ id: 'empty', name: 'หมวดว่าง' })
+    fixture.managedCourses.push({ ...fixture.managedCourses[0]!, id: 'archived', status: 'archived' })
+    const wrapper = mount(App, { attachTo: document.body })
+    await flushPromises()
+    await openDashboard(wrapper)
+    await navItem(wrapper, 'หมวดหมู่')!.trigger('click')
+    expect(wrapper.findAll('tbody tr')[0]!.text()).toContain('2')
+    expect(wrapper.findAll('tbody tr')[1]!.text()).toContain('ไม่มีรายวิชา')
+    await wrapper.get('tbody button').trigger('click')
+    const field = wrapper.get('tbody input')
+    expect(document.activeElement).toBe(field.element)
+    await field.setValue('ชื่อใหม่')
+    await field.trigger('keydown.enter')
+    await flushPromises()
+    expect(fixture.calls).toContainEqual({ name: 'update_category', args: { p_category_id: 'cat-1', p_name: 'ชื่อใหม่' } })
+    expect(wrapper.get('.toast-banner').text()).toContain('แก้ไขหมวดหมู่สำเร็จ')
+    fixture.calls.length = 0
+    await wrapper.get('tbody button').trigger('click')
+    await wrapper.get('tbody input').setValue('ยกเลิกชื่อ')
+    await wrapper.get('tbody input').trigger('keydown.esc')
+    expect(wrapper.find('tbody input').exists()).toBe(false)
+    expect(fixture.calls.some((c) => c.name === 'update_category')).toBe(false)
+    await wrapper.get('#admin-new-category').setValue('ใหม่')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(fixture.calls).toContainEqual({ name: 'create_category', args: { p_name: 'ใหม่' } })
+    wrapper.unmount()
+  })
+
+  it('retries category loading and never labels unknown course counts as zero', async () => {
+    fixture.role = 'administrator'
+    const wrapper = mount(App)
+    await flushPromises()
+    fixture.categoryFailures = 1
+    fixture.courseFailures = 1
+    await openDashboard(wrapper)
+    await navItem(wrapper, 'หมวดหมู่')!.trigger('click')
+    expect(wrapper.get('.admin-content').text()).toContain('โหลดหมวดหมู่ไม่สำเร็จ')
+    expect(wrapper.get('.admin-content').text()).not.toContain('ยังไม่มีหมวดหมู่')
+    await wrapper.findAll('.admin-content button').find((b) => b.text() === 'ลองใหม่')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('tbody').text()).toContain('วิชาศึกษาทั่วไป')
+    wrapper.unmount()
+
+    fixture.courseFailures = 1
+    const second = mount(App)
+    await flushPromises()
+    await openDashboard(second)
+    await navItem(second, 'หมวดหมู่')!.trigger('click')
+    expect(second.get('tbody').text()).toContain('วิชาศึกษาทั่วไป')
+    expect(second.get('tbody').text()).not.toContain('ไม่มีรายวิชา')
+    expect(second.get('.admin-content').text()).toContain('โหลดรายวิชาไม่สำเร็จ')
+    second.unmount()
+  })
+
+  it('searches reviews by course without spaces and keeps pre-migration reviews usable', async () => {
+    fixture.role = 'administrator'
+    fixture.moderationReviews.push({ ...fixture.moderationReviews[0]!, id: 'review-new', text: 'ใหม่', course_code: 'JC232', course_name: 'สื่อสารมวลชน' })
+    const wrapper = mount(App)
+    await flushPromises()
+    await openDashboard(wrapper)
+    await navItem(wrapper, 'รีวิว')!.trigger('click')
+    await flushPromises()
+    const oldRow = wrapper.findAll('.admin-review-row')[0]!
+    expect(oldRow.find('.admin-review-course').exists()).toBe(false)
+    expect(oldRow.text()).not.toContain('undefined')
+    await wrapper.get('#admin-review-search').setValue('jc 2')
+    expect(wrapper.findAll('.admin-review-row')).toHaveLength(1)
+    expect(wrapper.get('.admin-review-row').text()).toContain('ใหม่')
+    await wrapper.get('#admin-review-search').setValue('สื่อสาร')
+    expect(wrapper.findAll('.admin-review-row')).toHaveLength(1)
+    await wrapper.get('#admin-review-search').setValue('')
+    await wrapper.get('.admin-history-toggle').trigger('click')
+    await flushPromises()
+    expect(fixture.calls).toContainEqual({ name: 'list_review_moderation_audit', args: { p_review_id: 'review-1' } })
+    expect(wrapper.get('.admin-review-row').text()).toContain('ยังไม่เคยมีการเปลี่ยนสถานะ')
+    await wrapper.findAll('.admin-review-chips button').find((b) => b.text() === 'นำออก')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.admin-empty').text()).toContain('ไม่พบรีวิว')
+    await wrapper.get('.admin-empty button').trigger('click')
+    await flushPromises()
+    expect(fixture.calls).toContainEqual({ name: 'list_moderation_reviews', args: { p_state: null } })
+    wrapper.unmount()
+  })
+
+  it('hides the floating contact control in the dashboard and restores it on return', async () => {
+    fixture.role = 'administrator'
+    const wrapper = mount(App)
+    await flushPromises()
+    expect(wrapper.find('.floating-contact-btn').exists()).toBe(true)
+    await openDashboard(wrapper)
+    expect(wrapper.find('.floating-contact-btn').exists()).toBe(false)
+    await wrapper.get('.admin-back-btn').trigger('click')
+    expect(wrapper.find('.floating-contact-btn').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('shows and retries a category failure on Courses while retaining the loaded course rows', async () => {
+    fixture.role = 'administrator'
+    const wrapper = mount(App)
+    await flushPromises()
+    fixture.categoryFailures = 1
+    await openDashboard(wrapper)
+    expect(wrapper.get('tbody').text()).toContain('JC100')
+    expect(wrapper.get('.admin-content').text()).toContain('โหลดหมวดหมู่ไม่สำเร็จ')
+    expect(wrapper.get('#admin-course-category').attributes('disabled')).toBeDefined()
+    await wrapper.findAll('.admin-content button').find((b) => b.text() === 'ลองใหม่')!.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('#admin-course-category').text()).toContain('วิชาศึกษาทั่วไป')
+    expect(wrapper.get('#admin-course-category').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('.admin-content').text()).not.toContain('โหลดหมวดหมู่ไม่สำเร็จ')
+    wrapper.unmount()
+  })
+
+  it('keeps a half-typed category name across tab switches', async () => {
     fixture.role = 'administrator'
     const wrapper = mount(App)
     await flushPromises()
     await openDashboard(wrapper)
-    await navItem(wrapper, 'นำเข้ารายวิชา')!.trigger('click')
-    await flushPromises()
-
-    expect(wrapper.get('.admin-code-example code').text()).toBe('[{"courseCode":"JC100","academicYear":2569,"semester":"1","section":"2","instructorName":"อาจารย์เอ","dayOfWeek":2,"startsAt":"09:00","endsAt":"11:00"}]')
+    await navItem(wrapper, 'หมวดหมู่')!.trigger('click')
+    await wrapper.get('#admin-new-category').setValue('หมวดใหม่')
+    await navItem(wrapper, 'รายวิชา')!.trigger('click')
+    await navItem(wrapper, 'หมวดหมู่')!.trigger('click')
+    expect((wrapper.get('#admin-new-category').element as HTMLInputElement).value).toBe('หมวดใหม่')
     wrapper.unmount()
   })
 })

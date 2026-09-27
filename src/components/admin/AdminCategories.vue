@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { AdminService, type Category, type ManagedCourse } from '../../services/admin'
 
-const props = defineProps<{ service: AdminService; categories: Category[]; courses: ManagedCourse[] }>()
-const emit = defineEmits<{ changed: []; toast: [string] }>()
+const props = defineProps<{ service: AdminService; categories: Category[]; courses: ManagedCourse[]; loading: boolean; loadError: string; countsLoading: boolean; countsError: string }>()
+const emit = defineEmits<{ changed: []; retry: []; toast: [string] }>()
 
 const error = ref('')
 const newName = ref('')
@@ -26,7 +26,11 @@ async function addCategory() {
   } catch (cause) { error.value = cause instanceof Error ? cause.message : 'ไม่สามารถเพิ่มหมวดหมู่ได้' }
 }
 
-function beginEdit(category: Category) { editingId.value = category.id; editingValue.value = category.name; error.value = '' }
+async function beginEdit(category: Category) {
+  editingId.value = category.id; editingValue.value = category.name; error.value = ''
+  await nextTick()
+  document.getElementById('admin-category-rename')?.focus()
+}
 function cancelEdit() { editingId.value = null; editingValue.value = '' }
 
 async function saveEdit(category: Category) {
@@ -43,30 +47,36 @@ async function saveEdit(category: Category) {
 <template>
   <div class="admin-section">
     <h2 tabindex="-1" class="admin-section-heading">หมวดหมู่</h2>
-    <p class="admin-section-desc">เพิ่มและเปลี่ยนชื่อหมวดหมู่รายวิชา</p>
     <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
-    <div class="mb-3">
-      <label class="section-label-sm" for="admin-new-category">ชื่อหมวดหมู่ใหม่</label>
-      <div class="input-group">
+    <form class="admin-category-toolbar" @submit.prevent="addCategory">
+      <div><label class="section-label-sm" for="admin-new-category">ชื่อหมวดหมู่ใหม่</label>
         <input id="admin-new-category" v-model="newName" class="form-control" />
-        <button class="btn btn-purple" @click="addCategory">เพิ่ม</button>
       </div>
-    </div>
-    <ul class="list-group admin-flex-list">
-      <li v-for="category in categories" :key="category.id" class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <template v-if="editingId === category.id">
-          <input v-model="editingValue" class="form-control" style="max-width: 260px" :aria-label="`ชื่อหมวดหมู่ ${category.name}`" />
-          <span class="d-flex gap-2">
+      <button class="btn btn-purple" type="submit">เพิ่ม</button>
+    </form>
+    <div :aria-busy="loading && !categories.length">
+    <div v-if="loading && !categories.length" aria-label="กำลังโหลดหมวดหมู่"><div v-for="n in 6" :key="n" class="admin-skeleton-row" aria-hidden="true"></div></div>
+    <template v-else>
+    <div v-if="loadError || countsError" class="admin-load-error" role="alert">{{ loadError || countsError }} <button class="btn btn-outline-purple" @click="emit('retry')">ลองใหม่</button></div>
+    <table v-if="categories.length" class="admin-table admin-category-table" aria-label="หมวดหมู่">
+      <thead><tr><th>ชื่อหมวดหมู่</th><th class="admin-count-cell">รายวิชา</th><th class="admin-category-actions"><span class="visually-hidden">การจัดการ</span></th></tr></thead>
+      <tbody><tr v-for="category in categories" :key="category.id">
+        <td>
+          <input v-if="editingId === category.id" id="admin-category-rename" v-model="editingValue" class="form-control" :aria-label="`ชื่อหมวดหมู่ ${category.name}`" @keydown.enter.prevent="saveEdit(category)" @keydown.esc.prevent="cancelEdit" />
+          <template v-else>{{ category.name }}</template>
+        </td>
+        <td class="admin-count-cell"><span v-if="countsLoading || countsError" aria-label="ยังไม่ทราบจำนวนรายวิชา">—</span><span v-else-if="!courseCount.get(category.id)" class="admin-state-badge admin-state-neutral">ไม่มีรายวิชา</span><template v-else>{{ courseCount.get(category.id) }}</template></td>
+        <td class="admin-category-actions">
+          <div v-if="editingId === category.id" class="admin-row-actions">
             <button class="btn btn-sm btn-outline-secondary" @click="cancelEdit">ยกเลิก</button>
             <button class="btn btn-sm btn-purple" @click="saveEdit(category)">บันทึก</button>
-          </span>
-        </template>
-        <template v-else>
-          <span>{{ category.name }} <small class="text-muted">{{ courseCount.get(category.id) ?? 0 }} รายวิชา</small></span>
-          <button class="btn btn-sm btn-outline-purple" @click="beginEdit(category)">แก้ไข</button>
-        </template>
-      </li>
-    </ul>
-    <p v-if="!categories.length" class="text-muted">ยังไม่มีหมวดหมู่</p>
+          </div>
+          <button v-else class="btn btn-sm btn-outline-purple" :aria-label="`แก้ไข ${category.name}`" @click="beginEdit(category)">แก้ไข</button>
+        </td>
+      </tr></tbody>
+    </table>
+    <p v-else-if="!loadError" class="text-muted">ยังไม่มีหมวดหมู่</p>
+    </template>
+    </div>
   </div>
 </template>

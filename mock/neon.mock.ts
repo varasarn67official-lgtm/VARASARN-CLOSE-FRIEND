@@ -114,7 +114,7 @@ if (previewParams.get('large-text') === '1') document.documentElement.style.font
 // 10 categories, ~6% reviewed, 2026-09-27) for scale checks of the catalog page;
 // ?catalog-delay=<ms> slows list_approved_catalog to exercise its loading state, and
 // ?catalog-error=1 below exercises its failure/retry state.
-if (previewParams.get('catalog') === 'large') {
+if (previewParams.get('catalog') === 'large' || previewParams.get('admin') === 'large') {
   const shape: Array<[string, string, number]> = [
     ['วิชาศึกษาทั่วไป', 'TU', 60], ['กลุ่มวิชาบริหารการสื่อสาร', 'JC22', 24], ['กลุ่มวิชาภาพยนตร์และภาพถ่าย', 'JC27', 23],
     ['กลุ่มวิชาวิทยุโทรทัศน์และสื่อดิจิทัล', 'JC23', 19], ['วิชาบังคับนอกคณะ', 'AS1', 18], ['กลุ่มวิชาโฆษณา', 'JC26', 18],
@@ -129,6 +129,30 @@ if (previewParams.get('catalog') === 'large') {
     return { id: `course-l${serial}`, code: `${prefix}${String(index + 1).padStart(6 - prefix.length, '0')}`, name_th: names[serial % names.length], category_name: category, review_count: reviewed ? 1 + (serial % 4) : 0, average_rating: reviewed ? 2.5 + (serial % 5) * 0.5 : null }
   })).sort((a, b) => a.code.localeCompare(b.code))
 }
+// ?admin=large mirrors production's admin data shape (2026-09-27): the 214-course
+// catalog above as manageable courses (all approved in production; a few archived
+// here to exercise the status filter), 15 reviews from 4 to 781 characters (median
+// ~232), and the longest real course names and code. ?admin-delay=<ms> slows
+// list_manageable_courses; ?admin-error=1 fails its first call.
+const adminLarge = previewParams.get('admin') === 'large'
+if (adminLarge) {
+  const categoryIdByName = new Map(categories.map((category) => [category.name, category.id]))
+  const longest: Record<number, [string, string]> = {
+    0: ['JC326', 'การจัดการทางการสื่อสารเพื่อการปรับเปลี่ยนสังคมและการเปลี่ยนแปลงองค์การ'],
+    1: ['JC203', 'เทคโนโลยีและวิทยาการข้อมูลเพื่อการขับเคลื่อนงานด้านสื่อและการสื่อสาร'],
+    2: ['TH203/TH292', 'การอ่านเชิงวิจารณ์เบื้องต้น'],
+  }
+  managedCourses = catalog.map((course, index) => ({
+    id: course.id,
+    code: longest[index]?.[0] ?? course.code,
+    name_th: longest[index]?.[1] ?? course.name_th,
+    category_id: categoryIdByName.get(course.category_name) ?? categories[0].id,
+    category_name: course.category_name,
+    status: index % 53 === 7 ? 'archived' : 'approved',
+  }))
+}
+const adminDelay = Number(previewParams.get('admin-delay') ?? 0)
+let adminFailuresLeft = previewParams.get('admin-error') === '1' ? 1 : 0
 const catalogDelay = Number(previewParams.get('catalog-delay') ?? 0)
 // ?catalog-error=1 fails the first list_approved_catalog call (retry then succeeds).
 let catalogFailuresLeft = previewParams.get('catalog-error') === '1' ? 1 : 0
@@ -175,9 +199,23 @@ let pendingProposals = [
 ]
 
 let moderationReviews = [
-  { id: 'review-1', rating: 5, text: 'อาจารย์สอนสนุกมาก เนื้อหาเข้าใจง่าย แนะนำให้ลงเรียนเทอมนี้เลย', author_active: true, moderation_state: 'visible' as 'visible' | 'hidden' | 'removed', created_at: '2026-08-20T10:00:00Z' },
-  { id: 'review-6', rating: 1, text: 'ข้อความไม่เหมาะสมที่ถูกซ่อนไว้เพื่อทดสอบ', author_active: true, moderation_state: 'hidden' as 'visible' | 'hidden' | 'removed', created_at: '2026-07-05T10:00:00Z' },
+  { id: 'review-1', course_code: 'JC100', course_name: 'หลักการวารสารศาสตร์', rating: 5, text: 'อาจารย์สอนสนุกมาก เนื้อหาเข้าใจง่าย แนะนำให้ลงเรียนเทอมนี้เลย', author_active: true, moderation_state: 'visible' as 'visible' | 'hidden' | 'removed', created_at: '2026-08-20T10:00:00Z' },
+  { id: 'review-6', course_code: 'JC232', course_name: 'เทคนิคการถ่ายทำและตัดต่อวิดีโอ', rating: 1, text: 'ข้อความไม่เหมาะสมที่ถูกซ่อนไว้เพื่อทดสอบ', author_active: true, moderation_state: 'hidden' as 'visible' | 'hidden' | 'removed', created_at: '2026-07-05T10:00:00Z' },
 ]
+if (adminLarge) {
+  const sentence = 'อาจารย์สอนละเอียด มีตัวอย่างงานจริงให้ดู งานกลุ่มค่อนข้างเยอะแต่ได้ฝึกทำจริง ควรเตรียมตัวอ่านก่อนเข้าเรียนทุกครั้ง '
+  const lengths = [4, 4, 7, 124, 156, 161, 213, 232, 308, 342, 440, 448, 449, 473, 781]
+  moderationReviews = lengths.map((length, index) => ({
+    id: `review-l${index + 1}`,
+    course_code: managedCourses[index % 13].code,
+    course_name: managedCourses[index % 13].name_th,
+    rating: 1 + (index % 5),
+    text: length < 10 ? 'ดีมาก'.slice(0, length) : sentence.repeat(Math.ceil(length / sentence.length)).slice(0, length).trim(),
+    author_active: true,
+    moderation_state: (index === 3 ? 'hidden' : index === 9 ? 'removed' : 'visible') as 'visible' | 'hidden' | 'removed',
+    created_at: new Date(Date.UTC(2026, 8, 25 - index * 4, 10)).toISOString(),
+  }))
+}
 let moderationAudit: Record<string, Array<{ id: string; prior_state: string; new_state: string; reason: string; actor_name: string; created_at: string }>> = {
   'review-6': [{ id: 'audit-1', prior_state: 'visible', new_state: 'hidden', reason: 'รายงานว่าไม่เหมาะสม', actor_name: 'แอดมิน ม็อค', created_at: '2026-07-05T11:00:00Z' }],
 }
@@ -206,6 +244,8 @@ async function rpc(name: string, args?: Record<string, unknown>): Promise<RpcRes
     case 'list_categories':
       return ok(categories)
     case 'list_manageable_courses':
+      if (adminDelay) await new Promise((resolve) => setTimeout(resolve, adminDelay))
+      if (adminFailuresLeft > 0) { adminFailuresLeft -= 1; return { data: null, error: { message: '[dev:mock] simulated admin course-list failure' } } as RpcResult<unknown> }
       return ok(managedCourses)
     case 'list_approved_offerings':
       return ok(offeringsByCourse[String(args?.p_course_id)] ?? [])

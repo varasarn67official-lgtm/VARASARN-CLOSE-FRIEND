@@ -9,3 +9,9 @@ dist/
 .vercel
 .env*
 *xlsx
+
+# Keep specification screenshots available in the public repository.
+!.scratch/**/screenshots/
+!.scratch/**/screenshots/*.png
+!.scratch/**/screenshots/*.jpg
+!.scratch/**/screenshots/*.webp

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { searchKey } from './search'
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { neon, signInWithGoogle } from './neon'
 import { fetchAllRows, withRange } from './services/pagination'
@@ -57,8 +58,6 @@ const categoriesExpanded = ref(false)
 const reviewRatingFilter = ref(0); const reviewSemesterFilter = ref(''); const reviewYearFilter = ref(0)
 type CatalogSort = 'code' | 'reviews' | 'rating'
 const reviewedOnly = ref(false); const catalogSort = ref<CatalogSort>('code'); const catalogError = ref('')
-// Codes are typed as "jc 221" as often as "JC221", so matching ignores case and whitespace.
-function searchKey(value: string) { return value.toLowerCase().replace(/\s+/g, '') }
 function isReviewed(course: Course) { return (course.review_count ?? 0) > 0 }
 function matchesSearch(course: Course) {
   const search = searchKey(searchTerm.value)
@@ -453,7 +452,7 @@ onMounted(async () => {
                   openDashboard();
                 "
               >
-                แดชบอร์ดผู้ดูแล
+                <i class="bi bi-speedometer2 text-purple me-2" aria-hidden="true"></i>แดชบอร์ดผู้ดูแล
               </button>
               <hr class="dropdown-divider" />
               <button
@@ -537,7 +536,7 @@ onMounted(async () => {
                 openDashboard();
               "
             >
-              แดชบอร์ดผู้ดูแล
+              <i class="bi bi-speedometer2 text-purple me-2" aria-hidden="true"></i>แดชบอร์ดผู้ดูแล
             </button>
             <hr class="dropdown-divider" />
             <button
@@ -610,7 +609,7 @@ onMounted(async () => {
                 <button class="dropdown-item py-2" @click="accountMenuOpen = false; openMyReviews()">
                   <i class="bi bi-star-fill text-warning me-2"></i>รีวิวของฉัน
                 </button>
-                <button v-if="accessRole" class="dropdown-item py-2" @click="accountMenuOpen = false; openDashboard()">แดชบอร์ดผู้ดูแล</button>
+                <button v-if="accessRole" class="dropdown-item py-2" @click="accountMenuOpen = false; openDashboard()"><i class="bi bi-speedometer2 text-purple me-2" aria-hidden="true"></i>แดชบอร์ดผู้ดูแล</button>
                 <hr class="dropdown-divider" />
                 <button class="dropdown-item py-2" @click="accountMenuOpen = false; clearTimetable()">
                   <i class="bi bi-trash-fill text-danger me-2"></i>ล้างตาราง
@@ -1420,7 +1419,7 @@ onMounted(async () => {
       <i class="bi bi-arrow-up" aria-hidden="true"></i>
     </button>
     <button
-      v-if="signedIn"
+      v-if="signedIn && !dashboard"
       class="btn btn-purple floating-contact-btn"
       aria-label="แจ้งปัญหา/ติดต่อ"
       :aria-expanded="contactOpen"

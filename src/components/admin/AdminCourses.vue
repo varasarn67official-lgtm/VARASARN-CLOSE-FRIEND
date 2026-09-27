@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onActivated, onDeactivated, onBeforeUnmount, ref, watch } from 'vue'
+import { searchKey } from '../../search'
 import { AdminService, type Category, type ManagedCourse } from '../../services/admin'
 
-const props = defineProps<{ service: AdminService; categories: Category[]; courses: ManagedCourse[] }>()
-const emit = defineEmits<{ changed: []; toast: [string] }>()
+const props = defineProps<{ service: AdminService; categories: Category[]; courses: ManagedCourse[]; loading: boolean; loadError: string; categoriesLoading: boolean; categoriesError: string }>()
+const emit = defineEmits<{ changed: []; retry: []; toast: [string] }>()
 
-const loading = ref(true)
 const error = ref('')
 const searchTerm = ref('')
 const categoryFilter = ref('')
@@ -16,15 +16,32 @@ const courseCode = ref('')
 const courseName = ref('')
 const courseCategoryId = ref('')
 
-const filteredCourses = computed(() => props.courses.filter((course) => {
-  const search = searchTerm.value.trim().toLowerCase()
-  const matchesSearch = !search || `${course.code} ${course.name_th}`.toLowerCase().includes(search)
-  const matchesCategory = !categoryFilter.value || course.category_id === categoryFilter.value
-  const matchesStatus = statusFilter.value === 'all' || course.status === statusFilter.value
-  return matchesSearch && matchesCategory && matchesStatus
+const statuses = [{ key: 'all', label: 'ทั้งหมด' }, { key: 'approved', label: 'ใช้งานอยู่' }, { key: 'archived', label: 'อยู่ในคลัง' }] as const
+const matchedCourses = computed(() => props.courses.filter((course) => {
+  const query = searchKey(searchTerm.value)
+  return (!query || searchKey(course.code).includes(query) || searchKey(course.name_th).includes(query)) &&
+    (!categoryFilter.value || course.category_id === categoryFilter.value)
 }))
-
-onMounted(() => { loading.value = false })
+const filteredCourses = computed(() => matchedCourses.value.filter((course) => statusFilter.value === 'all' || course.status === statusFilter.value))
+function statusCount(status: string) { return status === 'all' ? matchedCourses.value.length : matchedCourses.value.filter((course) => course.status === status).length }
+const sentinel = ref<HTMLElement | null>(null)
+const toolbar = ref<HTMLElement | null>(null)
+const results = ref<HTMLElement | null>(null)
+const stuck = ref(false)
+function updateScrollState() { stuck.value = (sentinel.value?.getBoundingClientRect().top ?? 0) < 0 }
+function stopScrollListener() { window.removeEventListener('scroll', updateScrollState) }
+onActivated(() => { window.addEventListener('scroll', updateScrollState, { passive: true }); updateScrollState() })
+onDeactivated(stopScrollListener)
+onBeforeUnmount(stopScrollListener)
+watch([searchTerm, categoryFilter, statusFilter], async () => {
+  updateScrollState()
+  const reposition = stuck.value
+  await nextTick()
+  if (reposition && results.value && toolbar.value) {
+    window.scrollTo({ top: window.scrollY + results.value.getBoundingClientRect().top - toolbar.value.getBoundingClientRect().height, behavior: 'instant' })
+    updateScrollState()
+  }
+})
 
 function openAddModal() {
   editingCourseId.value = null
@@ -69,48 +86,59 @@ async function archive(course: ManagedCourse) {
 <template>
   <div class="admin-section">
     <h2 tabindex="-1" class="admin-section-heading">รายวิชา</h2>
-    <p class="admin-section-desc">ค้นหา เพิ่ม แก้ไข และเก็บรายวิชาเข้าคลัง</p>
     <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
-    <p v-if="loading" class="text-muted">กำลังโหลดข้อมูล...</p>
-    <template v-else>
-      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <div class="row g-2 flex-grow-1">
-          <div class="col-md-4">
-            <label class="section-label-sm" for="admin-course-search">ค้นหา</label>
-            <input id="admin-course-search" v-model="searchTerm" class="form-control" placeholder="รหัสวิชา หรือ ชื่อวิชา" />
-          </div>
-          <div class="col-md-4">
-            <label class="section-label-sm" for="admin-course-category">หมวดหมู่</label>
-            <select id="admin-course-category" v-model="categoryFilter" class="form-select">
-              <option value="">ทุกหมวดหมู่</option>
-              <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
-            </select>
-          </div>
-          <div class="col-md-4">
-            <label class="section-label-sm" for="admin-course-status">สถานะ</label>
-            <select id="admin-course-status" v-model="statusFilter" class="form-select">
-              <option value="all">ทุกสถานะ</option>
-              <option value="approved">ใช้งานอยู่</option>
-              <option value="archived">เก็บเข้าคลัง</option>
-            </select>
+    <div ref="sentinel" class="admin-toolbar-sentinel" aria-hidden="true"></div>
+    <div ref="toolbar" class="admin-course-toolbar" :class="{ 'is-stuck': stuck }">
+      <div class="admin-course-search">
+        <label class="section-label-sm" for="admin-course-search">ค้นหา</label>
+        <div class="admin-search-wrap">
+          <input id="admin-course-search" v-model="searchTerm" class="form-control" placeholder="รหัสวิชา หรือ ชื่อวิชา" />
+          <button v-if="searchTerm" class="admin-search-clear" aria-label="ล้างคำค้นหา" @click="searchTerm = ''"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+      </div>
+      <div class="admin-course-category">
+        <label class="section-label-sm" for="admin-course-category">หมวดหมู่</label>
+        <select id="admin-course-category" :disabled="categoriesLoading || !!categoriesError" v-model="categoryFilter" class="form-select">
+          <option value="">ทุกหมวดหมู่</option>
+          <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
+        </select>
+      </div>
+      <div class="admin-status-chips" aria-label="สถานะรายวิชา">
+        <button v-for="status in statuses" :key="status.key" class="category-btn" :class="{ active: statusFilter === status.key, 'is-empty': !loading && !loadError && statusCount(status.key) === 0 }" :aria-pressed="statusFilter === status.key" @click="statusFilter = status.key">{{ status.label }}<span v-if="!loading && !loadError" class="admin-chip-count">{{ statusCount(status.key) }}</span></button>
+      </div>
+      <button class="btn btn-purple admin-course-add" :disabled="categoriesLoading || !!categoriesError" @click="openAddModal"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>เพิ่มรายวิชา</button>
+    </div>
+    <div v-if="categoriesError" class="admin-load-error" role="alert">{{ categoriesError }} <button class="btn btn-outline-purple" @click="emit('retry')">ลองใหม่</button></div>
+    <div ref="results" class="admin-course-results" :aria-busy="loading && !courses.length">
+      <div v-if="loading && !courses.length" aria-label="กำลังโหลดรายวิชา"><div v-for="n in 6" :key="n" class="admin-skeleton-row" aria-hidden="true"></div></div>
+      <template v-else>
+        <div v-if="loadError" class="admin-load-error" role="alert">{{ loadError }} <button class="btn btn-outline-purple" @click="emit('retry')">ลองใหม่</button></div>
+        <p v-if="!loading && !loadError" class="visually-hidden" role="status" aria-live="polite">พบ {{ filteredCourses.length }} รายวิชา</p>
+        <table v-if="filteredCourses.length" class="admin-table admin-course-table" role="table" aria-label="รายวิชา">
+          <thead role="rowgroup"><tr role="row"><th role="columnheader">รหัสวิชา</th><th role="columnheader">ชื่อวิชา</th><th role="columnheader">หมวดหมู่</th><th role="columnheader">สถานะ</th><th role="columnheader" class="admin-actions-cell"><span class="visually-hidden">การจัดการ</span></th></tr></thead>
+          <tbody role="rowgroup">
+            <tr v-for="course in filteredCourses" :key="course.id" role="row" :class="{ 'is-archived': course.status === 'archived' }">
+              <td role="cell" class="admin-course-code">{{ course.code }}</td>
+              <td role="cell" class="admin-course-name">{{ course.name_th }}</td>
+              <td role="cell" class="admin-course-category-cell">{{ course.category_name }}</td>
+              <td role="cell" class="admin-course-state"><span class="admin-state-badge" :class="course.status === 'approved' ? 'admin-state-visible' : 'admin-state-neutral'">{{ course.status === 'approved' ? 'ใช้งานอยู่' : 'อยู่ในคลัง' }}</span></td>
+              <td role="cell" class="admin-actions-cell"><div class="admin-row-actions">
+                <button class="btn btn-sm btn-outline-purple" :disabled="categoriesLoading || !!categoriesError" :aria-label="`แก้ไข ${course.code}`" @click="openEditModal(course)">แก้ไข</button>
+                <button v-if="course.status === 'approved'" class="btn btn-sm btn-outline-danger" :aria-label="`เก็บเข้าคลัง ${course.code}`" @click="archive(course)"><i class="bi bi-archive me-1" aria-hidden="true"></i>เก็บเข้าคลัง</button>
+              </div></td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-else-if="!loadError" class="admin-empty">
+          <p>ไม่พบรายวิชาที่ตรงกับ “{{ searchTerm }}”</p>
+          <div class="d-flex flex-wrap gap-2">
+            <button v-if="searchTerm" class="btn btn-outline-purple" @click="searchTerm = ''">ล้างคำค้นหา</button>
+            <button v-if="categoryFilter" class="btn btn-outline-purple" @click="categoryFilter = ''">ทุกหมวดหมู่</button>
+            <button v-if="statusFilter !== 'all'" class="btn btn-outline-purple" @click="statusFilter = 'all'">ทุกสถานะ</button>
           </div>
         </div>
-        <button class="btn btn-purple" @click="openAddModal"><i class="bi bi-plus-lg me-1"></i>เพิ่มรายวิชา</button>
-      </div>
-      <p class="text-muted small">พบ {{ filteredCourses.length }} รายวิชา</p>
-      <ul class="list-group admin-flex-list">
-        <li v-for="course in filteredCourses" :key="course.id" class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <span><strong>{{ course.code }}</strong> · {{ course.name_th }}
-            <small class="text-muted">{{ course.category_name }} · {{ course.status === 'approved' ? 'ใช้งานอยู่' : 'เก็บเข้าคลัง' }}</small>
-          </span>
-          <span class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-purple" @click="openEditModal(course)">แก้ไข</button>
-            <button v-if="course.status === 'approved'" class="btn btn-sm btn-outline-danger" @click="archive(course)">เก็บเข้าคลัง</button>
-          </span>
-        </li>
-      </ul>
-      <p v-if="!filteredCourses.length" class="text-muted">ไม่พบรายวิชาที่ตรงกับการค้นหา</p>
-    </template>
+      </template>
+    </div>
     <div v-if="modalOpen" class="contact-panel" role="dialog" aria-modal="true" :aria-label="editingCourseId ? 'แก้ไขรายวิชา' : 'เพิ่มรายวิชา'" @click.self="closeModal">
       <div class="contact-modal-card">
         <div class="contact-modal-header">
