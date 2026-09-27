@@ -1,0 +1,272 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790107580438,
+      "tag": "0000_initial_review_tracer",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790107684549,
+      "tag": "0001_security_api",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790107800000,
+      "tag": "0002_owner_and_admin_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790134547187,
+      "tag": "0003_cooing_northstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790134800000,
+      "tag": "0004_course_and_category_management",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790138000000,
+      "tag": "0005_manageable_courses",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790138200000,
+      "tag": "0006_update_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790138400000,
+      "tag": "0007_merge_courses",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790138600000,
+      "tag": "0008_offering_periods",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790138800000,
+      "tag": "0009_offering_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790139000000,
+      "tag": "0010_review_discovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790139200000,
+      "tag": "0011_review_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790139400000,
+      "tag": "0012_review_moderation",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790139600000,
+      "tag": "0013_timetable",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790139800000,
+      "tag": "0014_timetable_replacement",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790140000000,
+      "tag": "0015_legacy_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790140200000,
+      "tag": "0016_timetable_meeting_discovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790140400000,
+      "tag": "0017_list_academic_periods",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790140600000,
+      "tag": "0018_list_offering_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790140800000,
+      "tag": "0019_bulk_offering_import",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790141000000,
+      "tag": "0020_offering_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790141200000,
+      "tag": "0021_import_legacy_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790141400000,
+      "tag": "0022_normalized_offering_sections",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790141600000,
+      "tag": "0023_offering_import_preflight",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790158000000,
+      "tag": "0024_student_reported_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790162453912,
+      "tag": "0025_correct_offering",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790163240915,
+      "tag": "0026_offering_proposal_fixes",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790168511665,
+      "tag": "0027_list_my_review_revisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790169630913,
+      "tag": "0028_list_review_moderation_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790170340530,
+      "tag": "0029_revoke_public_timetable_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790170962814,
+      "tag": "0030_fix_replace_timetable_offering_validation",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790171945291,
+      "tag": "0031_legacy_review_import_fixes",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790179631145,
+      "tag": "0032_review_backed_timetable",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790180000000,
+      "tag": "0033_official_timetable_instructor_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790251464327,
+      "tag": "0034_auto_approve_offering_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790252590589,
+      "tag": "0035_course_duplicate_code_error",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790290000000,
+      "tag": "0036_catalog_review_rating_summary",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790425543400,
+      "tag": "0037_silent_legacy_timetable_migration",
+      "breakpoints": true
+    }
+  ]
+}

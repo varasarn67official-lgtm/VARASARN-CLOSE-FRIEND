@@ -1,0 +1,3 @@
+CREATE FUNCTION api.replace_my_timetable_offering(p_offering_id uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=app_private,pg_temp AS $$ DECLARE v_course_id uuid; BEGIN SELECT course_id INTO v_course_id FROM offerings WHERE id=p_offering_id AND status='approved'; IF v_course_id IS NULL THEN RAISE EXCEPTION 'approved offering required'; END IF; DELETE FROM timetable_selections s USING offerings o WHERE s.offering_id=o.id AND s.user_id=auth.user_id()::uuid AND o.course_id=v_course_id; INSERT INTO timetable_selections(user_id,offering_id) VALUES(auth.user_id()::uuid,p_offering_id); END $$;
+--> statement-breakpoint
+GRANT EXECUTE ON FUNCTION api.replace_my_timetable_offering(uuid) TO authenticated;

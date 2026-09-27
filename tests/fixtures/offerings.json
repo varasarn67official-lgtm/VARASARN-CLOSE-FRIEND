@@ -1,0 +1,4 @@
+[
+  { "courseCode": "JC100", "academicYear": 2569, "semester": "1", "section": "1", "instructorName": "อาจารย์ผู้สอน", "dayOfWeek": 2, "startsAt": "09:00", "endsAt": "11:00" },
+  { "courseCode": "JC100", "academicYear": 2569, "semester": "1", "section": "2", "instructorName": "อาจารย์ผู้สอน", "dayOfWeek": 3, "startsAt": "13:00", "endsAt": "15:00" }
+]

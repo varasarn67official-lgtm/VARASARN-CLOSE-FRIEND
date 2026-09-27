@@ -1,0 +1,58 @@
+[
+  {
+    "Timestamp": "2026-10-01T09:15:00",
+    "CourseCode": "jc380",
+    "Rating": 2,
+    "ReviewText": "Synthetic review 1 for importer regression only.",
+    "Semester": "1",
+    "Year": 2025,
+    "Section": " 1 ",
+    "Teacher": "Synthetic instructor",
+    "CreatorEmail": "fixture-1@example.invalid",
+    "Day": "Monday",
+    "StartTime": "9:30",
+    "EndTime": "12:30"
+  },
+  {
+    "Timestamp": "2026-10-01T09:15:00",
+    "CourseCode": "jc201",
+    "Rating": 3,
+    "ReviewText": "Synthetic review 2 for importer regression only.",
+    "Semester": "1",
+    "Year": 2025,
+    "Section": " 2 ",
+    "Teacher": "Synthetic instructor",
+    "CreatorEmail": "fixture-2@example.invalid",
+    "Day": "Monday",
+    "StartTime": "9:30",
+    "EndTime": "12:30"
+  },
+  {
+    "Timestamp": "2026-10-01T09:15:00",
+    "CourseCode": "jc232",
+    "Rating": 4,
+    "ReviewText": "Synthetic review 3 for importer regression only.",
+    "Semester": "1",
+    "Year": 2025,
+    "Section": " 3 ",
+    "Teacher": "Synthetic instructor",
+    "CreatorEmail": "fixture-3@example.invalid",
+    "Day": "Monday",
+    "StartTime": "9:30",
+    "EndTime": "12:30"
+  },
+  {
+    "Timestamp": "2026-10-01T09:15:00",
+    "CourseCode": "jc364",
+    "Rating": 5,
+    "ReviewText": "Synthetic review 4 for importer regression only.",
+    "Semester": "1",
+    "Year": 2025,
+    "Section": " 4 ",
+    "Teacher": "Synthetic instructor",
+    "CreatorEmail": "fixture-4@example.invalid",
+    "Day": "Monday",
+    "StartTime": "9:30",
+    "EndTime": "12:30"
+  }
+]

@@ -1,0 +1,10 @@
+[
+  { "Timestamp": "2026-10-01T09:15:00+07:00", "CourseCode": "jc 201", "Rating": 4, "ReviewText": "งานกลุ่มเยอะแต่ได้ลงมือทำจริง", "Semester": 2, "Year": 2568, "Teacher": "อาจารย์ทดสอบ", "Section": " 810001 ", "Day": "จันทร์", "StartTime": 0.5625, "EndTime": 0.6875, "CreatorEmail": "legacy-a@example.invalid" },
+  { "Timestamp": "2026-10-02T10:00:00+07:00", "CourseCode": "JC201", "Rating": 4, "ReviewText": "งานกลุ่มเยอะแต่ได้ลงมือทำจริง", "Semester": "2", "Year": "2568", "Teacher": "อาจารย์ทดสอบ", "Section": "810 001", "Day": "", "StartTime": "", "EndTime": "", "CreatorEmail": "legacy-b@example.invalid" },
+  { "Timestamp": "2026-10-03T11:00:00+07:00", "CourseCode": "ZZ999", "Rating": 5, "ReviewText": "วิชานี้ไม่มีในรายการ", "Semester": 1, "Year": 2569, "Teacher": "", "Section": "1", "Day": "", "StartTime": "", "EndTime": "", "CreatorEmail": "legacy-c@example.invalid" },
+  { "Timestamp": "2026-10-04T12:00:00+07:00", "CourseCode": "JC232", "Rating": 6, "ReviewText": "คะแนนเกินช่วง", "Semester": 1, "Year": 2568, "Teacher": "", "Section": "320001", "Day": "", "StartTime": "", "EndTime": "", "CreatorEmail": "legacy-d@example.invalid" },
+  { "Timestamp": "", "CourseCode": "JC364", "Rating": 3, "ReviewText": "ไม่มีเวลาที่ส่งรีวิว", "Semester": 2, "Year": 2568, "Teacher": "", "Section": "1", "Day": "", "StartTime": "", "EndTime": "", "CreatorEmail": "legacy-e@example.invalid" },
+  { "Timestamp": 46300.25, "CourseCode": "JC380", "Rating": 5, "ReviewText": "เรียนภาคฤดูร้อนแล้วคุ้ม", "Semester": 3, "Year": 2025, "Teacher": "พี่นุ้ย วารี", "Section": "450001", "Day": "อังคาร", "StartTime": 0.5625, "EndTime": 0.7291666666666666, "CreatorEmail": "legacy-f@example.invalid" },
+  { "Timestamp": "", "CourseCode": "", "Rating": "", "ReviewText": "", "Semester": "", "Year": "", "Teacher": "", "Section": "", "Day": "", "StartTime": "", "EndTime": "", "CreatorEmail": "" },
+  { "Timestamp": "2026-10-05T13:00:00+07:00", "CourseCode": "JC201", "Rating": 2, "ReviewText": "ภาคเรียนไม่ถูกต้อง", "Semester": "X", "Year": 2568, "Teacher": "", "Section": "2", "Day": "", "StartTime": "", "EndTime": "", "CreatorEmail": "legacy-g@example.invalid" }
+]

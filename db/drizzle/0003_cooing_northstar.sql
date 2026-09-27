@@ -1,0 +1,3 @@
+-- Snapshot-only migration. The role tables were created in the preceding
+-- hand-authored security migration, which also defines their RLS, triggers,
+-- foreign keys, and RPC grants.
