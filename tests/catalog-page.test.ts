@@ -223,6 +223,8 @@ describe('course catalog page', () => {
     const wrapper = mount(App)
     await flushPromises()
     expect(wrapper.get('.catalog-state').text()).toContain('โหลดรายวิชาไม่สำเร็จ')
+    expect(wrapper.get('.catalog-state').text()).toContain('กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองอีกครั้ง')
+    expect(wrapper.text()).not.toContain('โหลดไม่ได้')
     expect(wrapper.get('.catalog-result-count').text()).not.toMatch(/0/)
     expect(wrapper.find('.category-count').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('ไม่พบรายวิชา')
@@ -253,6 +255,7 @@ describe('course catalog page', () => {
     await flushPromises()
     expect(codes(wrapper)).toEqual(['JC100', 'JC101', 'JC102', 'JC103'])
     expect(wrapper.get('.catalog-load-warning').text()).toContain('โหลดรายวิชาได้ไม่ครบ')
+    expect(wrapper.text()).not.toContain('page failed')
     fixture.paged.failingOffsets = []
     await wrapper.get('.catalog-load-warning .catalog-retry').trigger('click')
     await flushPromises()

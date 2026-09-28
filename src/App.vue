@@ -18,6 +18,11 @@ type TimetableEntry = { offering_id: string | null; review_id: string | null; le
 const courses = ref<Course[]>([]); const offerings = ref<Offering[]>([]); const reviews = ref<VisibleReview[]>([])
 const offeringMeetings = ref<Record<string, Meeting[]>>({})
 const selected = ref<Course | null>(null); const rating = ref(5); const text = ref(''); const error = ref(''); const loading = ref(true); const signedIn = ref(false); const publishing = ref(false)
+const startupDataErrors = ref<string[]>([]); const startupDataLoading = ref(false)
+let sessionGeneration = 0
+let catalogInFlight = false
+const catalogErrorMessage = 'กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองอีกครั้ง หากยังพบปัญหา กรุณาติดต่อผู้ดูแล'
+const loginErrorMessage = 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองเข้าสู่ระบบด้วย Google อีกครั้ง หากยังพบปัญหา กรุณาติดต่อผู้ดูแล'
 const reviewFormOpen = ref(false)
 watch(selected, (value) => { document.body.style.overflow = value ? 'hidden' : '' })
 type ConfirmVariant = 'warning' | 'success'
@@ -86,13 +91,21 @@ const catalogCountsAvailable = computed(() => courses.value.length > 0 || (!load
 const catalogFiltered = computed(() => Boolean(searchTerm.value.trim() || categoryFilter.value || reviewedOnly.value))
 async function loadCatalog() {
   if (!neon) { loading.value = false; error.value = 'ตั้งค่า Neon endpoint ใน .env.local ก่อนใช้งาน'; return }
+  if (catalogInFlight) return
+  const generation = sessionGeneration
+  catalogInFlight = true
   loading.value = true; catalogError.value = ''
-  const { data, error: apiError } = await fetchAllRows<Course>((from, to) => withRange((neon as any).rpc('list_approved_catalog', undefined, { count: 'exact' }), from, to))
-  // A later page can fail after earlier pages loaded; show those rows (with a warning) rather
-  // than an empty catalog, but never replace an already-loaded full list with a partial one.
-  if (apiError) { catalogError.value = apiError.message; if (!courses.value.length) courses.value = data }
-  else courses.value = data
-  loading.value = false
+  try {
+    const { data, error: apiError } = await fetchAllRows<Course>((from, to) => withRange((neon as any).rpc('list_approved_catalog', undefined, { count: 'exact' }), from, to))
+    if (generation !== sessionGeneration) return
+    // Preserve partial rows on a later-page error, and retain an already-loaded catalog.
+    if (apiError) { catalogError.value = catalogErrorMessage; if (!courses.value.length) courses.value = data }
+    else courses.value = data
+  } catch {
+    if (generation === sessionGeneration) catalogError.value = catalogErrorMessage
+  } finally {
+    if (generation === sessionGeneration) { loading.value = false; catalogInFlight = false }
+  }
 }
 const catalogActive = computed(() => signedIn.value && !dashboard.value && !timetable.value && !myReviewsScreen.value)
 const toolbarStuck = ref(false); const showBackToTop = ref(false); const searchFocused = ref(false)
@@ -130,7 +143,7 @@ function scrollToTop() {
   window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' })
 }
 window.addEventListener('scroll', updateScrollState, { passive: true })
-onBeforeUnmount(() => window.removeEventListener('scroll', updateScrollState))
+onBeforeUnmount(() => { sessionGeneration += 1; window.removeEventListener('scroll', updateScrollState) })
 async function loadOfferings(courseId: string) {
   offerings.value = []; offeringMeetings.value = {}
   const { data, error: apiError } = await (neon as any).rpc('list_approved_offerings', { p_course_id: courseId })
@@ -338,11 +351,27 @@ async function publish() {
     text.value = ''; reviewFormOpen.value = false; await loadReviews(selected.value.id)
   } catch (cause) { error.value = cause instanceof Error ? cause.message : 'ไม่สามารถเผยแพร่รีวิวได้' } finally { publishing.value = false }
 }
-async function enter() { try { await signInWithGoogle() } catch (cause) { error.value = cause instanceof Error ? cause.message : 'ไม่สามารถเริ่มการเข้าสู่ระบบได้' } }
-async function loadAccess() {
-  const { data, error: apiError } = await (neon as any).rpc('current_access')
-  if (apiError) throw new Error(apiError.message)
-  accessRole.value = data?.[0]?.role ?? null
+async function enter() { error.value = ''; try { await signInWithGoogle() } catch { error.value = loginErrorMessage } }
+async function loadStartupData() {
+  if (!neon || !signedIn.value || startupDataLoading.value) return
+  const generation = sessionGeneration
+  startupDataLoading.value = true
+  const results = await Promise.allSettled([
+    (async () => {
+      const { data, error: apiError } = await (neon as any).rpc('current_access')
+      if (apiError) throw new Error(apiError.message)
+      if (generation === sessionGeneration) accessRole.value = data?.[0]?.role ?? null
+    })(),
+    (async () => {
+      const items = await adminService.value!.listCategories()
+      if (generation === sessionGeneration) categories.value = items
+    })(),
+  ])
+  if (generation !== sessionGeneration) return
+  startupDataErrors.value = []
+  if (results[0].status === 'rejected') startupDataErrors.value.push('ตรวจสอบสิทธิ์การใช้งานไม่สำเร็จ บางเมนูอาจยังไม่แสดง')
+  if (results[1].status === 'rejected') startupDataErrors.value.push('โหลดหมวดหมู่ไม่สำเร็จ ยังสามารถค้นหารายวิชาได้')
+  startupDataLoading.value = false
 }
 function openDashboard() { if (!accessRole.value) return; dashboard.value = true; error.value = '' }
 async function onDashboardCatalogChanged() { await loadCatalog(); if (adminService.value) categories.value = await adminService.value.listCategories() }
@@ -360,6 +389,10 @@ async function submitProposal() { if (!selected.value || !proposalService.value)
 async function loadMyProposals() { if (!proposalService.value) return; try { myProposals.value = await proposalService.value.listMine() } catch (cause) { error.value = cause instanceof Error ? cause.message : 'ไม่สามารถโหลดข้อเสนอของฉันได้' } }
 async function signOut() {
   await neon?.auth.signOut()
+  sessionGeneration += 1
+  startupDataErrors.value = []; startupDataLoading.value = false
+  catalogInFlight = false; loading.value = false
+  categories.value = []
   signedIn.value = false
   courses.value = []
   offerings.value = []
@@ -380,26 +413,28 @@ async function signOut() {
 }
 onMounted(async () => {
   if (!neon) { loading.value = false; return }
+  let session
   try {
-    const session = await (neon.auth as any).getSession()
-    signedIn.value = Boolean(session?.data?.user)
-    if (signedIn.value) {
-      const user = session.data.user
-      displayName.value = user.name || user.email?.split('@')[0] || 'บัญชีของฉัน'
-      signedInEmail.value = user.email ?? ''
-      activeMigrationUserId = user.id
-      await Promise.all([loadCatalog(), loadAccess(), adminService.value?.listCategories().then((items) => { categories.value = items })])
-      if (signedInEmail.value && activeMigrationUserId === user.id) {
-        try {
-          const source = readLegacyTimetable(signedInEmail.value, window.localStorage)
-          if (source.kind === 'found') { retryEntries = source.entries.filter((entry) => !entry.invalidReason); void runLegacyMigration(user.id, retryEntries) }
-        } catch { /* Legacy data is optional; the signed-in app stays usable. */ }
-      }
-    } else loading.value = false
-  } catch (cause) {
-    signedIn.value = false
+    session = await (neon.auth as any).getSession()
+    if (session?.error) throw session.error
+  } catch {
     loading.value = false
-    error.value = cause instanceof Error ? cause.message : 'ไม่สามารถตรวจสอบสถานะการเข้าสู่ระบบได้'
+    error.value = loginErrorMessage
+    return
+  }
+  signedIn.value = Boolean(session?.data?.user)
+  if (!signedIn.value) { loading.value = false; return }
+  const user = session.data.user
+  displayName.value = user.name || user.email?.split('@')[0] || 'บัญชีของฉัน'
+  signedInEmail.value = user.email ?? ''
+  activeMigrationUserId = user.id
+  // Data errors are handled separately so successful authentication stays intact.
+  await Promise.all([loadCatalog(), loadStartupData()])
+  if (signedInEmail.value && activeMigrationUserId === user.id) {
+    try {
+      const source = readLegacyTimetable(signedInEmail.value, window.localStorage)
+      if (source.kind === 'found') { retryEntries = source.entries.filter((entry) => !entry.invalidReason); void runLegacyMigration(user.id, retryEntries) }
+    } catch { /* Legacy data is optional; the signed-in app stays usable. */ }
   }
 })
 </script>
@@ -509,6 +544,13 @@ onMounted(async () => {
       </div>
     </section>
     <section v-else class="container app-body">
+      <div v-if="startupDataErrors.length" class="alert alert-warning startup-data-warning" role="alert" :aria-busy="startupDataLoading">
+        <p v-for="message in startupDataErrors" :key="message" class="mb-1">{{ message }}</p>
+        <p class="small mb-2">กรุณาลองโหลดอีกครั้ง หากยังพบปัญหา กรุณาติดต่อผู้ดูแล</p>
+        <button class="btn btn-sm btn-outline-purple startup-data-retry" type="button" :disabled="startupDataLoading" @click="loadStartupData">
+          <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>{{ startupDataLoading ? 'กำลังโหลด…' : 'ลองอีกครั้ง' }}
+        </button>
+      </div>
       <div v-if="!timetableActive" class="mobile-navigation-row d-md-none mb-3">
         <div class="mobile-account-menu">
           <button
