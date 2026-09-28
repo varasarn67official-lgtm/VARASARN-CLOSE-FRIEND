@@ -267,6 +267,13 @@
       "when": 1790425543400,
       "tag": "0037_silent_legacy_timetable_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790500000000,
+      "tag": "0038_moderation_review_courses",
+      "breakpoints": true
     }
   ]
 }

@@ -90,7 +90,9 @@ try {
   // --- The moderation list now loads, and exposes no author identity. ---
   const listed = (await client.query('SELECT * FROM api.list_moderation_reviews(NULL)')).rows.filter((r) => [active, withdrawn].includes(r.id))
   assert.equal(listed.length, 2)
-  assert.deepEqual(Object.keys(listed[0]).sort(), ['author_active', 'created_at', 'id', 'moderation_state', 'rating', 'text'])
+  assert.ok(listed.every((r) => r.course_code === 'ZZMODERATE' && r.course_name === 'ทดสอบการตรวจสอบรีวิว'))
+  assert.equal((await client.query("SELECT has_function_privilege('authenticated', 'api.list_moderation_reviews(text)', 'EXECUTE') AS allowed")).rows[0].allowed, true)
+  assert.deepEqual(Object.keys(listed[0]).sort(), ['author_active', 'course_code', 'course_name', 'created_at', 'id', 'moderation_state', 'rating', 'text'])
   assert.equal(listed.find((r) => r.id === withdrawn).author_active, false, 'author-withdrawn state is inspectable')
   const hiddenOnly = (await client.query("SELECT id FROM api.list_moderation_reviews('hidden')")).rows.map((r) => r.id)
   assert.ok(!hiddenOnly.includes(active))
