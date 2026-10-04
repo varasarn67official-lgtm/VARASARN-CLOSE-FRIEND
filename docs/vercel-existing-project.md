@@ -4,6 +4,10 @@ Target project: https://vercel.com/varasarn67/varasarn-close-friend
 Repository: varasarn67official-lgtm/VARASARN-CLOSE-FRIEND
 Production origin: https://varasarn-close-friend.vercel.app
 
+Google login browser recovery and the optional same-origin Auth endpoint are
+documented in [auth-browser-recovery.md](auth-browser-recovery.md). Enable the
+endpoint on a preview and complete its real-device acceptance before release.
+
 ## Preview first
 
 The release branch is `codex/rebuilt-app-cutover`. It preserves the original repository history and imports application source from `EverydayImcalculating/varasarn-friends-test` commit `c84b6d6`, plus the existing synthetic importer test fixtures and test updates. Vercel configuration specifies Vite, `npm ci`, `npm run build`, `dist`, and the SPA rewrite.

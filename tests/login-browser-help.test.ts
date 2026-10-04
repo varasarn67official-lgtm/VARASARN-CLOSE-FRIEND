@@ -1,0 +1,81 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import LoginBrowserHelp from '../src/components/LoginBrowserHelp.vue'
+import { chromeRecoveryLink, embeddedBrowser, recordAuthFailure, recoveryLink } from '../src/services/auth-recovery'
+
+afterEach(() => vi.restoreAllMocks())
+describe('embedded browser recovery', () => {
+  it('recognizes LINE and Instagram without treating Safari or Chrome as embedded', () => {
+    expect(embeddedBrowser('iPhone Safari Line/14.0')).toBe('LINE')
+    expect(embeddedBrowser('Android Chrome Instagram 123')).toBe('Instagram')
+    expect(embeddedBrowser('iPhone FBAN/FBIOS;FBAV/123')).toBe('Facebook')
+    expect(embeddedBrowser('Android Messenger FBAV/123')).toBe('Messenger')
+    expect(embeddedBrowser('iPhone Safari/604.1')).toBeNull()
+    expect(embeddedBrowser('Android Chrome/130.0')).toBeNull()
+    expect(embeddedBrowser('iPhone CriOS/130.0 Mobile Safari/604.1')).toBeNull()
+    expect(embeddedBrowser('Android SamsungBrowser/27.0 Chrome/130.0')).toBeNull()
+    expect(embeddedBrowser('iPhone FxiOS/130.0 Mobile Safari/604.1')).toBeNull()
+  })
+  it('provides an Android Chrome intent with a clean fallback link', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Android Instagram 123')
+    const wrapper = mount(LoginBrowserHelp, { props: { failed: false } })
+    const intent = chromeRecoveryLink('https://app.example.com/?neon_auth_session_verifier=private')
+    expect(intent).toContain('intent://app.example.com/#Intent;scheme=https;package=com.android.chrome;')
+    expect(intent).toContain('S.browser_fallback_url=https%3A%2F%2Fapp.example.com%2F')
+    expect(intent).not.toContain('private')
+    expect(wrapper.get('a').attributes('href')).toContain('intent://')
+    expect(wrapper.get('a').attributes('href')).toContain('?continue=google#Intent;')
+    expect(wrapper.get('a').text()).toContain('เปิด Chrome เพื่อเข้าสู่ระบบ')
+    expect(wrapper.get('.browser-alternatives').attributes('open')).toBeUndefined()
+    wrapper.unmount()
+  })
+  it('copies a clean origin without OAuth credentials, query parameters, or fragments', () => {
+    expect(recoveryLink('https://app.example.com/?neon_auth_session_verifier=private#token')).toBe('https://app.example.com/')
+    expect(recoveryLink('https://app.example.com/', true)).toBe('https://app.example.com/?openExternalBrowser=1')
+  })
+  it('shows LINE guidance immediately and exposes an external-browser link', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('iPhone Line/14.0')
+    const wrapper = mount(LoginBrowserHelp, { props: { failed: false } })
+    expect(wrapper.get('details').attributes('open')).toBeDefined()
+    expect(wrapper.get('a').attributes('href')).toContain('openExternalBrowser=1')
+    expect(wrapper.get('a').attributes('href')).toContain('continue=google')
+    expect(wrapper.findAll('a')).toHaveLength(1)
+    expect(wrapper.get('a').classes()).toContain('btn-purple')
+    wrapper.unmount()
+  })
+  it('shows two menu steps on Instagram for iPhone with copy hidden in a secondary disclosure', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('iPhone Instagram 123')
+    const wrapper = mount(LoginBrowserHelp, { props: { failed: false } })
+    expect(wrapper.get('.login-browser-help').attributes('open')).toBeDefined()
+    expect(wrapper.findAll('.browser-menu-steps li')).toHaveLength(2)
+    expect(wrapper.get('.browser-menu-steps').text()).toContain('Instagram')
+    expect(wrapper.find('a').exists()).toBe(false)
+    expect(wrapper.get('.browser-alternatives').attributes('open')).toBeUndefined()
+    expect(wrapper.get('button').classes()).not.toContain('btn-purple')
+    wrapper.unmount()
+  })
+  it('keeps guidance available in ordinary browsers and expands it on a failure', async () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Chrome/130')
+    const wrapper = mount(LoginBrowserHelp, { props: { failed: false } })
+    expect(wrapper.get('details').attributes('open')).toBeUndefined()
+    expect(wrapper.find('a').exists()).toBe(false)
+    await wrapper.setProps({ failed: true })
+    expect(wrapper.get('details').attributes('open')).toBeDefined()
+    wrapper.unmount()
+  })
+  it('provides a selectable clean link when clipboard access is blocked', async () => {
+    const wrapper = mount(LoginBrowserHelp, { props: { failed: true } })
+    ;(wrapper.get('.browser-alternatives').element as HTMLDetailsElement).open = true
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('input').element.value).toBe(`${window.location.origin}/`)
+    expect(wrapper.get('[role="status"]').text()).toContain('คัดลอกอัตโนมัติไม่ได้')
+    wrapper.unmount()
+  })
+  it('never logs exception text, identities, tokens, or URLs', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    recordAuthFailure('session', { status: 400, message: 'private-token user@example.com', code: 'secret' })
+    expect(warn.mock.calls[0]![1]).toMatchObject({ stage: 'session', status: 400, code: 'AUTH_HTTP_ERROR' })
+    expect(JSON.stringify(warn.mock.calls)).not.toMatch(/private-token|user@example.com|secret/)
+  })
+})

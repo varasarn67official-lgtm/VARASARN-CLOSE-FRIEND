@@ -14,6 +14,7 @@ const fixture = vi.hoisted(() => ({
   accessPending: null as Promise<void> | null,
   owner: false,
   calls: [] as string[],
+  signInCalls: 0,
 }))
 
 vi.mock('../src/neon', () => ({
@@ -39,6 +40,7 @@ vi.mock('../src/neon', () => ({
     },
   },
   signInWithGoogle: async () => {
+    fixture.signInCalls += 1
     if (fixture.signInFailure) throw fixture.signInFailure
     if (fixture.signInPending) await fixture.signInPending
   },
@@ -57,17 +59,19 @@ beforeEach(() => {
   fixture.accessPending = null
   fixture.owner = false
   fixture.calls = []
+  fixture.signInCalls = 0
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
-afterEach(() => wrapper?.unmount())
+afterEach(() => { wrapper?.unmount(); vi.restoreAllMocks(); history.replaceState(null, '', '/') })
 
-const recoveryMessage = 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองเข้าสู่ระบบด้วย Google อีกครั้ง หากยังพบปัญหา กรุณาติดต่อผู้ดูแล'
+const recoveryMessage = 'ลองเข้าสู่ระบบด้วย Google อีกครั้ง'
 
 describe('login failure feedback at the App root', () => {
   it('explains a rejected session restoration without displaying the technical error', async () => {
     fixture.sessionFailure = new Error('HTTP 400')
     wrapper = mount(App)
     await flushPromises()
-    expect(wrapper.get('.login-card [role="alert"]').text()).toBe(recoveryMessage)
+    expect(wrapper.get('.login-card [role="alert"]').text()).toContain(recoveryMessage)
     expect(wrapper.get('.google-signin-btn').attributes('disabled')).toBeUndefined()
     expect(wrapper.text()).not.toContain('HTTP 400')
   })
@@ -76,7 +80,7 @@ describe('login failure feedback at the App root', () => {
     fixture.sessionError = { message: 'HTTP 400', status: 400 }
     wrapper = mount(App)
     await flushPromises()
-    expect(wrapper.get('.login-card [role="alert"]').text()).toBe(recoveryMessage)
+    expect(wrapper.get('.login-card [role="alert"]').text()).toContain(recoveryMessage)
   })
 
   it('keeps an ordinary signed-out visit free of failure messages', async () => {
@@ -92,8 +96,64 @@ describe('login failure feedback at the App root', () => {
     fixture.signInFailure = new Error('HTTP 400')
     await wrapper.get('.google-signin-btn').trigger('click')
     await flushPromises()
-    expect(wrapper.get('.login-card [role="alert"]').text()).toBe(recoveryMessage)
+    expect(wrapper.get('.login-card [role="alert"]').text()).toContain(recoveryMessage)
     expect(wrapper.text()).not.toContain('HTTP 400')
+  })
+
+  it.each(['iPhone Line/14.0', 'Android Instagram 123', 'iPhone FBAN/FBIOS;FBAV/123'])('gives %s a browser-opening route instead of a redundant Google button', async userAgent => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent)
+    wrapper = mount(App, { attachTo: document.body })
+    await flushPromises()
+    expect(fixture.signInCalls).toBe(0)
+    expect(wrapper.find('.google-signin-btn').exists()).toBe(false)
+    expect(wrapper.get('.login-browser-help').attributes('open')).toBeDefined()
+    expect(wrapper.find('.login-card [role="alert"]').exists()).toBe(false)
+  })
+
+  it('continues Google once in the destination browser and consumes the request before auth', async () => {
+    history.replaceState(null, '', '/?continue=google')
+    wrapper = mount(App)
+    await flushPromises()
+    expect(fixture.signInCalls).toBe(1)
+    expect(location.search).toBe('')
+    wrapper.unmount()
+    wrapper = mount(App)
+    await flushPromises()
+    expect(fixture.signInCalls).toBe(1)
+  })
+
+  it('keeps a continuation that stayed in Instagram on the browser instructions', async () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('iPhone Instagram 123')
+    history.replaceState(null, '', '/?continue=google')
+    wrapper = mount(App)
+    await flushPromises()
+    expect(fixture.signInCalls).toBe(0)
+    expect(location.search).toBe('')
+    expect(wrapper.get('.browser-menu-steps').text()).toContain('Instagram')
+  })
+
+  it('uses an existing destination-browser session without starting Google again', async () => {
+    fixture.session = { user: { id: 'synthetic-member' } }
+    history.replaceState(null, '', '/?continue=google')
+    wrapper = mount(App)
+    await flushPromises()
+    expect(fixture.signInCalls).toBe(0)
+    expect(location.search).toBe('')
+    expect(wrapper.find('.login-card').exists()).toBe(false)
+  })
+
+  it('allows manual recovery after a failed continuation without restarting on reload', async () => {
+    fixture.signInFailure = new Error('HTTP 400')
+    history.replaceState(null, '', '/?continue=google')
+    wrapper = mount(App)
+    await flushPromises()
+    expect(wrapper.get('.login-card [role="alert"]').text()).toContain(recoveryMessage)
+    expect(fixture.signInCalls).toBe(1)
+    wrapper.unmount()
+    wrapper = mount(App)
+    await flushPromises()
+    expect(fixture.signInCalls).toBe(1)
+    expect(wrapper.find('.login-card [role="alert"]').exists()).toBe(false)
   })
 
   it('clears the previous failure as soon as the user retries Google sign-in', async () => {
@@ -104,9 +164,22 @@ describe('login failure feedback at the App root', () => {
     fixture.signInPending = new Promise<void>((resolve) => { resolveSignIn = resolve })
     await wrapper.get('.google-signin-btn').trigger('click')
     expect(wrapper.find('.login-card [role="alert"]').exists()).toBe(false)
+    expect(wrapper.get('.google-signin-btn').attributes('disabled')).toBeDefined()
+    await wrapper.get('.google-signin-btn').trigger('click')
+    expect(fixture.signInCalls).toBe(1)
     resolveSignIn()
     await flushPromises()
     expect(wrapper.find('.login-card [role="alert"]').exists()).toBe(false)
+  })
+
+  it('explains an OAuth error return and cleans its error parameters', async () => {
+    history.replaceState(null, '', '/?authError=oauth&error=private-description')
+    wrapper = mount(App)
+    await flushPromises()
+    expect(wrapper.get('.login-card [role="alert"]').text()).toContain(recoveryMessage)
+    expect(wrapper.get('.login-browser-help').attributes('open')).toBeUndefined()
+    expect(location.search).toBe('')
+    expect(wrapper.text()).not.toContain('private-description')
   })
 
   it('does not label a category fetch failure as failed Google sign-in', async () => {
