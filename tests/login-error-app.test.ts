@@ -177,7 +177,7 @@ describe('login failure feedback at the App root', () => {
     wrapper = mount(App)
     await flushPromises()
     expect(wrapper.get('.login-card [role="alert"]').text()).toContain(recoveryMessage)
-    expect(wrapper.get('.login-browser-help').attributes('open')).toBeUndefined()
+    expect(wrapper.find('.login-browser-help').exists()).toBe(false)
     expect(location.search).toBe('')
     expect(wrapper.text()).not.toContain('private-description')
   })

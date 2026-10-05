@@ -12,8 +12,8 @@ On iPhone, Instagram and the other Meta apps get two visible menu steps:
 tap the app's menu, then choose Open in browser / Open in Safari. No undocumented
 iOS launch schemes are used. Copying is under a secondary disclosure, with a
 selectable input if clipboard access fails. Ordinary browsers keep their
-Google button and optional help. An auth failure shows a concise notice above
-one Google retry action; the browser guide stays optional in ordinary browsers
+Google button without app-browser instructions. An auth failure shows a concise notice above
+one Google retry action; the browser guide stays hidden in ordinary browsers
 so an unconfirmed failure is not presented as an embedded-browser problem.
 Session restoration and pending sign-in show progress and prevent overlapping
 Google attempts. A failed attempt restores focus to the retry button. Existing
@@ -102,8 +102,8 @@ Safari and Chrome:
    after reload. Check that cookies are deleted on the website's origin.
 5. Check cancellation/error returns, blocked clipboard access, and a failed
    auth request. Recognized embedded browsers should keep their guidance;
-   ordinary browsers should show error feedback and a clear retry before
-   optional browser help. Technical messages should stay hidden, progress
+   ordinary browsers should show error feedback and a clear retry without
+   app-browser instructions. Technical messages should stay hidden, progress
    should be announced, and manual retry should work without overlapping attempts.
 6. When an embedded Google flow is blocked, confirm the external-browser
    recovery succeeds. Record the failure stage, HTTP status/code and support

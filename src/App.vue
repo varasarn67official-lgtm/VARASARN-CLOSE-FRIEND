@@ -606,7 +606,7 @@ onMounted(async () => {
             ><span>{{ signingIn ? 'กำลังเปิด Google…' : error ? 'ลองเข้าสู่ระบบอีกครั้ง' : 'เข้าสู่ระบบด้วย Google' }}</span>
           </button>
           <p class="login-progress" role="status" aria-live="polite">{{ restoringSession ? 'กำลังตรวจสอบการเข้าสู่ระบบ…' : signingIn ? 'กำลังพาไปหน้าเข้าสู่ระบบของ Google' : '' }}</p>
-          <LoginBrowserHelp ref="browserHelp" :failed="Boolean(error) && Boolean(inAppBrowser)" />
+          <LoginBrowserHelp v-if="inAppBrowser" ref="browserHelp" :failed="Boolean(error)" />
           <p v-if="error" class="login-support">ยังเข้าไม่ได้? <a href="https://line.me/R/ti/p/@293shldn" target="_blank" rel="noopener noreferrer">ติดต่อผู้ดูแล<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></p>
           </div>
         </div>
