@@ -163,11 +163,6 @@ h1, h2, h3, h4, h5, h6 { font-family: 'Kanit', sans-serif; }
 }
 .login-banner img { display: block; width: 100%; border-radius: 16px; }
 .login-description { margin: 1rem 0 1.25rem; color: var(--ink-600); font-size: 1.05rem; line-height: 1.6; }
-.login-prompt {
-  margin-bottom: 1rem;
-  color: var(--purple-900);
-  font-weight: 500;
-}
 .login-actions { max-width: 420px; margin-inline: auto; }
 .login-error-notice { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; margin: 0 0 16px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--purple-50); color: var(--purple-900); text-align: left; }
 .login-error-icon { color: var(--purple-700); font-size: 1.25rem; line-height: 1.5; }

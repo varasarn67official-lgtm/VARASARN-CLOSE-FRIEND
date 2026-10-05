@@ -575,9 +575,6 @@ onMounted(async () => {
             พื้นที่รวบรวมรีวิววิชาเรียนและจัดตารางเรียนส่วนตัว<br />ดูแลโดย กน.วส.
           </p>
           <div class="login-actions">
-          <div v-if="!inAppBrowser && !error && !signingIn && !restoringSession" class="login-prompt">
-            เข้าสู่ระบบด้วยบัญชี Google
-          </div>
           <div v-if="error" class="login-error-notice" role="alert" aria-atomic="true">
             <i class="bi bi-exclamation-circle login-error-icon" aria-hidden="true"></i>
             <div>
