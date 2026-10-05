@@ -11,6 +11,8 @@ import { ProposalService, type OfferingProposal } from './services/proposals'
 import { migrateLegacyTimetable, readLegacyTimetable, type LegacyClass } from './services/legacy-timetable-import'
 import AdminDashboard from './components/admin/AdminDashboard.vue'
 import StarRating from './components/StarRating.vue'
+import LoginBrowserHelp from './components/LoginBrowserHelp.vue'
+import { embeddedBrowser, recordAuthFailure } from './services/auth-recovery'
 
 type Course = { id: string; code: string; name_th: string; category_name: string; review_count?: number; average_rating?: number | null }
 type Offering = { id: string; section: string; academic_year: number; semester: string; instructor_name: string | null }
@@ -23,6 +25,18 @@ let sessionGeneration = 0
 let catalogInFlight = false
 const catalogErrorMessage = 'กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองอีกครั้ง หากยังพบปัญหา กรุณาติดต่อผู้ดูแล'
 const loginErrorMessage = 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองเข้าสู่ระบบด้วย Google อีกครั้ง หากยังพบปัญหา กรุณาติดต่อผู้ดูแล'
+const signingIn = ref(false)
+const restoringSession = ref(Boolean(neon))
+const loginFailureStage = ref<'session' | 'sign-in' | null>(null)
+const googleSignInButton = ref<HTMLButtonElement | null>(null)
+const inAppBrowser = embeddedBrowser(navigator.userAgent)
+const loginFailureTitle = computed(() => loginFailureStage.value === 'session' ? 'ยังเข้าใช้งานไม่ได้' : 'เข้าสู่ระบบไม่สำเร็จ')
+const loginFailureDescription = computed(() => inAppBrowser
+  ? 'เปิดเว็บไซต์ใน Safari หรือ Chrome เพื่อเข้าสู่ระบบด้วย Google'
+  : loginFailureStage.value === 'session'
+    ? 'ตรวจสอบการเข้าสู่ระบบไม่สำเร็จ ลองเข้าสู่ระบบด้วย Google อีกครั้ง'
+    : 'ลองเข้าสู่ระบบด้วย Google อีกครั้ง')
+const browserHelp = ref<InstanceType<typeof LoginBrowserHelp> | null>(null)
 const reviewFormOpen = ref(false)
 watch(selected, (value) => { document.body.style.overflow = value ? 'hidden' : '' })
 type ConfirmVariant = 'warning' | 'success'
@@ -351,7 +365,23 @@ async function publish() {
     text.value = ''; reviewFormOpen.value = false; await loadReviews(selected.value.id)
   } catch (cause) { error.value = cause instanceof Error ? cause.message : 'ไม่สามารถเผยแพร่รีวิวได้' } finally { publishing.value = false }
 }
-async function enter() { error.value = ''; try { await signInWithGoogle() } catch { error.value = loginErrorMessage } }
+async function enter() {
+  if (embeddedBrowser(navigator.userAgent)) {
+    await browserHelp.value?.requestExternalBrowser()
+    return
+  }
+  if (signingIn.value || restoringSession.value) return
+  error.value = ''; loginFailureStage.value = null; signingIn.value = true
+  try { await signInWithGoogle() }
+  catch (cause) { recordAuthFailure('sign-in', cause); loginFailureStage.value = 'sign-in'; error.value = loginErrorMessage }
+  finally {
+    signingIn.value = false
+    if (loginFailureStage.value) {
+      await nextTick()
+      googleSignInButton.value?.focus()
+    }
+  }
+}
 async function loadStartupData() {
   if (!neon || !signedIn.value || startupDataLoading.value) return
   const generation = sessionGeneration
@@ -406,24 +436,52 @@ async function signOut() {
   catalogError.value = ''
   accountMenuOpen.value = false
   contactOpen.value = false
+  loginFailureStage.value = null
   displayName.value = 'บัญชีของฉัน'
   signedInEmail.value = ''
   activeMigrationUserId = null
   retryEntries = []
 }
 onMounted(async () => {
+  // A browser-opening action explicitly requests Google continuation. Consume
+  // it before any auth work so reload, back, cancellation or errors cannot loop.
+  const landing = new URL(window.location.href)
+  const continueGoogle = landing.searchParams.get('continue') === 'google'
+  if (continueGoogle) {
+    landing.searchParams.delete('continue')
+    history.replaceState(history.state, '', landing)
+  }
   if (!neon) { loading.value = false; return }
   let session
   try {
     session = await (neon.auth as any).getSession()
     if (session?.error) throw session.error
-  } catch {
+  } catch (cause) {
     loading.value = false
+    restoringSession.value = false
+    loginFailureStage.value = 'session'
+    recordAuthFailure('session', cause)
     error.value = loginErrorMessage
     return
   }
+  restoringSession.value = false
   signedIn.value = Boolean(session?.data?.user)
-  if (!signedIn.value) { loading.value = false; return }
+  if (!signedIn.value) {
+    loading.value = false
+    const callback = new URL(window.location.href)
+    if (callback.searchParams.get('authError') === 'oauth') {
+      loginFailureStage.value = 'sign-in'
+      error.value = loginErrorMessage
+      recordAuthFailure('sign-in', null)
+      callback.searchParams.delete('authError')
+      callback.searchParams.delete('error')
+      callback.searchParams.delete('error_description')
+      history.replaceState(history.state, '', callback)
+    } else if (continueGoogle && !inAppBrowser) {
+      await enter()
+    }
+    return
+  }
   const user = session.data.user
   displayName.value = user.name || user.email?.split('@')[0] || 'บัญชีของฉัน'
   signedInEmail.value = user.email ?? ''
@@ -516,10 +574,15 @@ onMounted(async () => {
           <p class="login-description">
             พื้นที่รวบรวมรีวิววิชาเรียนและจัดตารางเรียนส่วนตัว<br />ดูแลโดย กน.วส.
           </p>
-          <div class="login-prompt">
-            ✨ กรุณาเข้าสู่ระบบด้วยบัญชี Google เพื่อใช้งานระบบ
+          <div class="login-actions">
+          <div v-if="error" class="login-error-notice" role="alert" aria-atomic="true">
+            <i class="bi bi-exclamation-circle login-error-icon" aria-hidden="true"></i>
+            <div>
+              <h2>{{ loginFailureTitle }}</h2>
+              <p id="login-error-description">{{ loginFailureDescription }}</p>
+            </div>
           </div>
-          <button class="google-signin-btn" @click="enter">
+          <button v-if="!inAppBrowser" ref="googleSignInButton" class="google-signin-btn" :class="{ 'is-retry': Boolean(error) }" :disabled="signingIn || restoringSession" :aria-busy="signingIn || restoringSession" :aria-describedby="error ? 'login-error-description' : undefined" @click="enter">
             <svg class="google-mark" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 fill="#4285F4"
@@ -537,9 +600,12 @@ onMounted(async () => {
                 fill="#EA4335"
                 d="M12 6.19c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.19 14.63 2.3 12 2.3a9.74 9.74 0 0 0-8.72 5.39l3.25 2.53C7.3 7.91 9.46 6.19 12 6.19Z"
               /></svg
-            ><span>เข้าสู่ระบบด้วย Google</span>
+            ><span>{{ signingIn ? 'กำลังเปิด Google…' : error ? 'ลองเข้าสู่ระบบอีกครั้ง' : 'เข้าสู่ระบบด้วย Google' }}</span>
           </button>
-          <p v-if="error" class="text-danger mt-3 mb-0" role="alert">{{ error }}</p>
+          <p class="login-progress" role="status" aria-live="polite">{{ restoringSession ? 'กำลังตรวจสอบการเข้าสู่ระบบ…' : signingIn ? 'กำลังพาไปหน้าเข้าสู่ระบบของ Google' : '' }}</p>
+          <LoginBrowserHelp v-if="inAppBrowser" ref="browserHelp" :failed="Boolean(error)" />
+          <p v-if="error" class="login-support">ยังเข้าไม่ได้? <a href="https://line.me/R/ti/p/@293shldn" target="_blank" rel="noopener noreferrer">ติดต่อผู้ดูแล<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></p>
+          </div>
         </div>
       </div>
     </section>
