@@ -15,6 +15,25 @@ const editingCourseId = ref<string | null>(null)
 const courseCode = ref('')
 const courseName = ref('')
 const courseCategoryId = ref('')
+const saving = ref(false)
+const dialog = ref<HTMLElement | null>(null)
+let returnFocus: HTMLElement | null = null
+
+function focusDialog() {
+  returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  nextTick(() => document.getElementById('admin-course-modal-title')?.focus())
+}
+function trapDialogFocus(event: KeyboardEvent) {
+  const controls = dialog.value?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled)')
+  if (!controls?.length) { event.preventDefault(); dialog.value?.focus(); return }
+  const first = controls[0]!
+  const last = controls[controls.length - 1]!
+  if (event.shiftKey && (document.activeElement === first || !Array.from(controls).includes(document.activeElement as HTMLElement))) {
+    event.preventDefault(); last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault(); first.focus()
+  }
+}
 
 const statuses = [{ key: 'all', label: 'ทั้งหมด' }, { key: 'approved', label: 'ใช้งานอยู่' }, { key: 'archived', label: 'อยู่ในคลัง' }] as const
 const matchedCourses = computed(() => props.courses.filter((course) => {
@@ -29,10 +48,17 @@ const toolbar = ref<HTMLElement | null>(null)
 const results = ref<HTMLElement | null>(null)
 const stuck = ref(false)
 function updateScrollState() { stuck.value = (sentinel.value?.getBoundingClientRect().top ?? 0) < 0 }
-function stopScrollListener() { window.removeEventListener('scroll', updateScrollState) }
-onActivated(() => { window.addEventListener('scroll', updateScrollState, { passive: true }); updateScrollState() })
-onDeactivated(stopScrollListener)
-onBeforeUnmount(stopScrollListener)
+let stickyObserver: IntersectionObserver | undefined
+function stopObserving() { stickyObserver?.disconnect() }
+onActivated(() => {
+  updateScrollState()
+  if (typeof IntersectionObserver !== 'undefined' && sentinel.value) {
+    stickyObserver = new IntersectionObserver(updateScrollState)
+    stickyObserver.observe(sentinel.value)
+  }
+})
+onDeactivated(stopObserving)
+onBeforeUnmount(stopObserving)
 watch([searchTerm, categoryFilter, statusFilter], async () => {
   updateScrollState()
   const reposition = stuck.value
@@ -50,6 +76,7 @@ function openAddModal() {
   courseCategoryId.value = props.categories[0]?.id ?? ''
   error.value = ''
   modalOpen.value = true
+  focusDialog()
 }
 function openEditModal(course: ManagedCourse) {
   editingCourseId.value = course.id
@@ -58,19 +85,31 @@ function openEditModal(course: ManagedCourse) {
   courseCategoryId.value = course.category_id
   error.value = ''
   modalOpen.value = true
+  focusDialog()
 }
-function closeModal() { modalOpen.value = false }
+function closeModal() {
+  if (saving.value) return
+  modalOpen.value = false
+  error.value = ''
+  nextTick(() => returnFocus?.focus())
+}
 
 async function submit() {
+  if (saving.value) return
+  saving.value = true
+  nextTick(() => dialog.value?.focus())
+  error.value = ''
   const draft = { code: courseCode.value, nameTh: courseName.value, categoryId: courseCategoryId.value }
   try {
     const wasEditing = Boolean(editingCourseId.value)
     if (wasEditing) await props.service.updateCourse(editingCourseId.value as string, draft)
     else await props.service.createCourse(draft)
     modalOpen.value = false
+    nextTick(() => returnFocus?.focus())
     emit('changed')
     emit('toast', wasEditing ? 'บันทึกรายวิชาสำเร็จ' : 'เพิ่มรายวิชาสำเร็จ')
   } catch (cause) { error.value = cause instanceof Error ? cause.message : 'ไม่สามารถบันทึกรายวิชาได้' }
+  finally { saving.value = false }
 }
 
 async function archive(course: ManagedCourse) {
@@ -85,13 +124,17 @@ async function archive(course: ManagedCourse) {
 
 <template>
   <div class="admin-section">
-    <h2 tabindex="-1" class="admin-section-heading">รายวิชา</h2>
-    <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
+    <div class="admin-section-intro">
+      <h2 tabindex="-1" class="admin-section-heading">รายวิชา</h2>
+      <p class="admin-section-desc">ค้นหา แก้ไข และจัดหมวดหมู่รายวิชา</p>
+    </div>
+    <p v-if="error && !modalOpen" class="alert alert-danger" role="alert">{{ error }}</p>
     <div ref="sentinel" class="admin-toolbar-sentinel" aria-hidden="true"></div>
     <div ref="toolbar" class="admin-course-toolbar" :class="{ 'is-stuck': stuck }">
       <div class="admin-course-search">
         <label class="section-label-sm" for="admin-course-search">ค้นหา</label>
         <div class="admin-search-wrap">
+          <i class="bi bi-search admin-search-icon" aria-hidden="true"></i>
           <input id="admin-course-search" v-model="searchTerm" class="form-control" placeholder="รหัสวิชา หรือ ชื่อวิชา" />
           <button v-if="searchTerm" class="admin-search-clear" aria-label="ล้างคำค้นหา" @click="searchTerm = ''"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
         </div>
@@ -107,13 +150,13 @@ async function archive(course: ManagedCourse) {
         <button v-for="status in statuses" :key="status.key" class="category-btn" :class="{ active: statusFilter === status.key, 'is-empty': !loading && !loadError && statusCount(status.key) === 0 }" :aria-pressed="statusFilter === status.key" @click="statusFilter = status.key">{{ status.label }}<span v-if="!loading && !loadError" class="admin-chip-count">{{ statusCount(status.key) }}</span></button>
       </div>
       <button class="btn btn-purple admin-course-add" :disabled="categoriesLoading || !!categoriesError" @click="openAddModal"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>เพิ่มรายวิชา</button>
+      <p v-if="!loading && !loadError" class="admin-results-count" role="status" aria-live="polite">พบ <strong>{{ filteredCourses.length }}</strong> รายวิชา</p>
     </div>
     <div v-if="categoriesError" class="admin-load-error" role="alert">{{ categoriesError }} <button class="btn btn-outline-purple" @click="emit('retry')">ลองใหม่</button></div>
     <div ref="results" class="admin-course-results" :aria-busy="loading && !courses.length">
       <div v-if="loading && !courses.length" aria-label="กำลังโหลดรายวิชา"><div v-for="n in 6" :key="n" class="admin-skeleton-row" aria-hidden="true"></div></div>
       <template v-else>
         <div v-if="loadError" class="admin-load-error" role="alert">{{ loadError }} <button class="btn btn-outline-purple" @click="emit('retry')">ลองใหม่</button></div>
-        <p v-if="!loading && !loadError" class="visually-hidden" role="status" aria-live="polite">พบ {{ filteredCourses.length }} รายวิชา</p>
         <table v-if="filteredCourses.length" class="admin-table admin-course-table" role="table" aria-label="รายวิชา">
           <thead role="rowgroup"><tr role="row"><th role="columnheader">รหัสวิชา</th><th role="columnheader">ชื่อวิชา</th><th role="columnheader">หมวดหมู่</th><th role="columnheader">สถานะ</th><th role="columnheader" class="admin-actions-cell"><span class="visually-hidden">การจัดการ</span></th></tr></thead>
           <tbody role="rowgroup">
@@ -130,7 +173,9 @@ async function archive(course: ManagedCourse) {
           </tbody>
         </table>
         <div v-else-if="!loadError" class="admin-empty">
-          <p>ไม่พบรายวิชาที่ตรงกับ “{{ searchTerm }}”</p>
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <h3>{{ searchTerm ? `ไม่พบรายวิชาที่ตรงกับ “${searchTerm}”` : courses.length ? 'ไม่พบรายวิชาที่ตรงกับตัวกรอง' : 'ยังไม่มีรายวิชา' }}</h3>
+          <p>{{ courses.length ? 'ลองเปลี่ยนคำค้นหา หมวดหมู่ หรือสถานะ' : 'เพิ่มรายวิชาเพื่อเริ่มจัดการข้อมูล' }}</p>
           <div class="d-flex flex-wrap gap-2">
             <button v-if="searchTerm" class="btn btn-outline-purple" @click="searchTerm = ''">ล้างคำค้นหา</button>
             <button v-if="categoryFilter" class="btn btn-outline-purple" @click="categoryFilter = ''">ทุกหมวดหมู่</button>
@@ -139,32 +184,33 @@ async function archive(course: ManagedCourse) {
         </div>
       </template>
     </div>
-    <div v-if="modalOpen" class="contact-panel" role="dialog" aria-modal="true" :aria-label="editingCourseId ? 'แก้ไขรายวิชา' : 'เพิ่มรายวิชา'" @click.self="closeModal">
+    <div v-if="modalOpen" ref="dialog" class="contact-panel" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="admin-course-modal-title" @click.self="closeModal" @keydown.esc.prevent="closeModal" @keydown.tab="trapDialogFocus">
       <div class="contact-modal-card">
         <div class="contact-modal-header">
-          <h3 class="modal-title text-purple mb-0 h5">{{ editingCourseId ? 'แก้ไขรายวิชา' : 'เพิ่มรายวิชา' }}</h3>
-          <button class="btn-close" aria-label="ปิด" @click="closeModal"></button>
+          <h3 id="admin-course-modal-title" tabindex="-1" class="modal-title text-purple mb-0 h5">{{ editingCourseId ? 'แก้ไขรายวิชา' : 'เพิ่มรายวิชา' }}</h3>
+          <button class="btn-close" :disabled="saving" aria-label="ปิด" @click="closeModal"></button>
         </div>
         <div class="course-modal-body">
           <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
           <div class="mb-3">
             <label for="admin-course-code">รหัสวิชา</label>
-            <input id="admin-course-code" v-model="courseCode" class="form-control" />
+            <input id="admin-course-code" v-model="courseCode" :disabled="saving" class="form-control" />
           </div>
           <div class="mb-3">
             <label for="admin-course-name">ชื่อรายวิชา</label>
-            <input id="admin-course-name" v-model="courseName" class="form-control" />
+            <input id="admin-course-name" v-model="courseName" :disabled="saving" class="form-control" />
           </div>
           <div class="mb-4">
             <label for="admin-course-category-select">หมวดหมู่</label>
-            <select id="admin-course-category-select" v-model="courseCategoryId" class="form-select">
+            <select id="admin-course-category-select" v-model="courseCategoryId" :disabled="saving" class="form-select">
               <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
             </select>
           </div>
           <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary flex-grow-1" @click="closeModal">ยกเลิก</button>
-            <button class="btn btn-purple flex-grow-1" @click="submit">{{ editingCourseId ? 'บันทึก' : 'เพิ่มรายวิชา' }}</button>
+            <button class="btn btn-outline-secondary flex-grow-1" :disabled="saving" @click="closeModal">ยกเลิก</button>
+            <button class="btn btn-purple flex-grow-1" :disabled="saving" :aria-busy="saving" @click="submit">{{ saving ? 'กำลังบันทึก…' : editingCourseId ? 'บันทึก' : 'เพิ่มรายวิชา' }}</button>
           </div>
+          <p v-if="saving" class="admin-save-status" role="status">กำลังบันทึกรายวิชา</p>
         </div>
       </div>
     </div>

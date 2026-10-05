@@ -94,23 +94,25 @@ async function moderate() {
 
 <template>
   <div ref="list" class="admin-section">
-    <h2 tabindex="-1" class="admin-section-heading">รีวิว</h2>
+    <div class="admin-section-intro">
+      <h2 tabindex="-1" class="admin-section-heading">รีวิว</h2>
+      <p class="admin-section-desc">ตรวจสอบเนื้อหาและดูประวัติการเปลี่ยนสถานะ</p>
+    </div>
     <p v-if="error" class="alert alert-danger" role="alert">{{ error }}</p>
-    <div class="row g-2 mb-3">
-      <div class="col-md-5">
+    <div class="admin-review-toolbar">
+      <div class="admin-review-search">
         <label class="section-label-sm" for="admin-review-search">ค้นหาข้อความรีวิว</label>
-        <input id="admin-review-search" v-model="search" class="form-control" placeholder="ค้นหาข้อความรีวิว" />
+        <div class="admin-search-wrap"><i class="bi bi-search admin-search-icon" aria-hidden="true"></i><input id="admin-review-search" v-model="search" class="form-control" placeholder="ข้อความ รหัสวิชา หรือชื่อวิชา" /></div>
       </div>
-      <div class="col-md-5 d-flex align-items-end">
+      <div class="admin-review-filters">
         <div class="admin-review-chips" aria-label="สถานะรีวิว"><button v-for="state in states" :key="state.key" class="category-btn" :class="{ active: stateFilter === state.key }" :aria-pressed="stateFilter === state.key" @click="stateFilter = state.key">{{ state.label }}</button></div>
       </div>
-      <div class="col-md-2 d-flex align-items-end">
-        <button class="btn btn-outline-purple w-100" @click="load">โหลดใหม่</button>
-      </div>
+      <button class="btn btn-outline-purple admin-review-reload" :disabled="loading" @click="load"><i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>โหลดใหม่</button>
+      <p v-if="!loading && !error" class="admin-results-count" role="status" aria-live="polite">พบ <strong>{{ visibleReviews.length }}</strong> รีวิว</p>
     </div>
-    <p v-if="loading" class="text-muted">กำลังโหลดข้อมูล...</p>
+    <div v-if="loading" role="status" aria-label="กำลังโหลดรีวิว"><div v-for="n in 3" :key="n" class="admin-review-skeleton" aria-hidden="true"><span></span><span></span><span></span></div></div>
     <template v-else>
-      <div v-if="!visibleReviews.length && !error" class="admin-empty"><p>ไม่พบรีวิว</p><button v-if="stateFilter !== 'all'" class="btn btn-outline-purple" @click="stateFilter = 'all'">ทุกสถานะ</button></div>
+      <div v-if="!visibleReviews.length && !error" class="admin-empty"><i class="bi bi-chat-square-text" aria-hidden="true"></i><h3>ไม่พบรีวิว</h3><p>ลองเปลี่ยนคำค้นหาหรือเลือกสถานะอื่น</p><div class="d-flex flex-wrap gap-2"><button v-if="search" class="btn btn-outline-purple" @click="search = ''">ล้างคำค้นหา</button><button v-if="stateFilter !== 'all'" class="btn btn-outline-purple" @click="stateFilter = 'all'">ทุกสถานะ</button></div></div>
       <article v-for="review in visibleReviews" :key="review.id" class="admin-review-row">
         <div class="d-flex justify-content-between gap-2">
           <StarRating class="stars" :value="review.rating" :label="`ให้คะแนน ${review.rating} จาก 5 ดาว`" />

@@ -78,11 +78,9 @@ onMounted(loadShared)
 
 <template>
   <div class="admin-dashboard">
-    <header class="course-review-header admin-dashboard-header">
-      <div class="d-flex align-items-center gap-3 flex-wrap">
-        <button class="btn btn-link text-white p-0 admin-back-btn" @click="emit('close')">← กลับหน้ารายวิชา</button>
-        <h1 class="mb-0">แดชบอร์ดผู้ดูแล</h1>
-      </div>
+    <header class="admin-dashboard-header">
+      <button type="button" class="admin-back-btn" @click="emit('close')"><i class="bi bi-arrow-left" aria-hidden="true"></i>กลับหน้ารายวิชา</button>
+      <h1>แดชบอร์ดผู้ดูแล</h1>
     </header>
     <div class="admin-layout">
       <nav class="admin-nav" aria-label="เมนูผู้ดูแล">
@@ -95,7 +93,7 @@ onMounted(loadShared)
             :aria-current="activeSection === item.key ? 'page' : undefined"
             @click="selectSection(item.key, $event.currentTarget as HTMLElement)"
           >
-            <i class="bi" :class="item.icon"></i>
+            <i class="bi" :class="item.icon" aria-hidden="true"></i>
             <span>{{ item.label }}</span>
           </button>
       </nav>

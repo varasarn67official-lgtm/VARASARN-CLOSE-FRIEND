@@ -4,6 +4,7 @@ import App from '../src/App.vue'
 
 const fixture = vi.hoisted(() => ({
   courseGate: null as Promise<void> | null,
+  courseSaveGate: null as Promise<void> | null,
   courseFailures: 0,
   categoryFailures: 0,
   role: null as 'owner' | 'administrator' | null,
@@ -46,6 +47,7 @@ vi.mock('../src/neon', () => ({
       if (name === 'list_role_assignments') return { data: fixture.members, error: null }
       if (name === 'list_verified_accounts') return { data: fixture.verifiedAccounts, error: null }
       if (name === 'create_course') {
+        if (fixture.courseSaveGate) await fixture.courseSaveGate
         const { p_code: code, p_name_th: nameTh, p_category_id: categoryId } = args as { p_code?: string; p_name_th?: string; p_category_id?: string }
         if (fixture.catalog.some((course) => course.code === code)) return { data: null, error: { message: `รหัสวิชา ${code} มีอยู่แล้ว` } }
         const category = fixture.categories.find((item) => item.id === categoryId)
@@ -90,6 +92,7 @@ describe('admin dashboard', () => {
   afterEach(() => vi.unstubAllGlobals())
   beforeEach(() => {
     fixture.courseGate = null
+    fixture.courseSaveGate = null
     fixture.courseFailures = 0
     fixture.categoryFailures = 0
     fixture.categories = [{ id: 'cat-1', name: 'วิชาศึกษาทั่วไป' }]
@@ -147,6 +150,50 @@ describe('admin dashboard', () => {
     expect(fixture.calls).toContainEqual({ name: 'create_course', args: { p_code: 'JC200', p_name_th: 'วิชาใหม่', p_category_id: 'cat-1' } })
     expect(wrapper.get('.toast-banner').text()).toContain('เพิ่มรายวิชาสำเร็จ')
     expect(fixture.calls.some((call) => call.name === 'list_approved_catalog')).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('keeps keyboard focus in the course dialog and returns to its trigger on Escape', async () => {
+    fixture.role = 'administrator'
+    const wrapper = mount(App, { attachTo: document.body })
+    await flushPromises()
+    await openDashboard(wrapper)
+    const add = wrapper.get('.admin-course-add')
+    ;(add.element as HTMLButtonElement).focus()
+    await add.trigger('click')
+    expect(document.activeElement).toBe(wrapper.get('#admin-course-modal-title').element)
+    const save = wrapper.get('.course-modal-body button.btn-purple')
+    ;(save.element as HTMLButtonElement).focus()
+    await save.trigger('keydown', { key: 'Tab' })
+    expect(document.activeElement).toBe(wrapper.get('[role="dialog"] .btn-close').element)
+    await wrapper.get('[role="dialog"]').trigger('keydown', { key: 'Escape' })
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(document.activeElement).toBe(add.element)
+    wrapper.unmount()
+  })
+
+  it('prevents duplicate course writes and keeps the draft open while saving', async () => {
+    fixture.role = 'administrator'
+    const wrapper = mount(App)
+    await flushPromises()
+    await openDashboard(wrapper)
+    await wrapper.get('.admin-course-add').trigger('click')
+    await wrapper.get('#admin-course-code').setValue('JC222')
+    await wrapper.get('#admin-course-name').setValue('การรายงานข่าว')
+    let finishSave!: () => void
+    fixture.courseSaveGate = new Promise<void>((resolve) => { finishSave = resolve })
+    const save = wrapper.get('.course-modal-body button.btn-purple')
+    await save.trigger('click')
+    await save.trigger('click')
+    expect(fixture.calls.filter((call) => call.name === 'create_course')).toHaveLength(1)
+    expect(save.attributes('disabled')).toBeDefined()
+    expect(wrapper.get('#admin-course-code').attributes('disabled')).toBeDefined()
+    await wrapper.get('.course-modal-body .btn-outline-secondary').trigger('click')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+    finishSave()
+    await flushPromises()
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(wrapper.get('.toast-banner').text()).toContain('เพิ่มรายวิชาสำเร็จ')
     wrapper.unmount()
   })
 
